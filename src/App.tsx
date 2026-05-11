@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from './lib/supabase';
 import { translate } from './lib/i18n';
+import LandingPage from './LandingPage';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 
 type Lang = 'en' | 'ar';
@@ -27,6 +28,7 @@ export default function App() {
   const [client, setClient] = useState<any>(null);
   const [lang, setLang] = useState<Lang>('en');
   const [loadingApp, setLoadingApp] = useState(true);
+  const [showLanding, setShowLanding] = useState(true);
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -66,9 +68,13 @@ export default function App() {
   return (
     <>
       {!session || !client ? (
-        <Login setSession={setSession} lang={lang} />
+        showLanding ? (
+          <LandingPage lang={lang} setLang={setLang} onLoginClick={() => setShowLanding(false)} />
+        ) : (
+          <Login setSession={setSession} lang={lang} onBack={() => setShowLanding(true)} />
+        )
       ) : (
-        <Dashboard client={client} lang={lang} setLang={setLang} onLogout={() => supabase.auth.signOut()} />
+        <Dashboard client={client} lang={lang} setLang={setLang} onLogout={() => { supabase.auth.signOut(); setShowLanding(true); }} />
       )}
       <div id="toast" className="toast"></div>
     </>
@@ -76,7 +82,7 @@ export default function App() {
 }
 
 // --- Login Page ---
-function Login({ setSession, lang }: { setSession: any, lang: Lang }) {
+function Login({ setSession, lang, onBack }: { setSession: any, lang: Lang, onBack: () => void }) {
   const t = (key: string) => translate(key, lang);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -94,8 +100,15 @@ function Login({ setSession, lang }: { setSession: any, lang: Lang }) {
 
   return (
     <div id="login-page">
-      <div className="login-brand-corner">
-        <div className="void-logo">{t('brand')}</div>
+      <div className="login-brand-corner cursor-pointer flex items-center gap-2" onClick={onBack}>
+        <svg className="w-5 h-5 text-[#00ff99]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          {lang === 'ar' ? (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          ) : (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          )}
+        </svg>
+        <span className="text-sm font-semibold">{t('back') || (lang === 'en' ? 'Back to Site' : 'العودة للموقع')}</span>
       </div>
       
       <div className="login-content">

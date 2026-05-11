@@ -41,13 +41,24 @@ html {
 }
 
 body {
-  background: var(--void);
+  background: linear-gradient(-45deg, var(--deeper), var(--void), var(--dark), #03120a);
+  background-size: 400% 400%;
+  animation: bodyBgDrift 15s ease infinite alternate;
   color: var(--text);
   font-family: var(--sans);
   font-size: 13px;
   min-height: 100vh;
   overflow-x: hidden;
   position: relative;
+}
+
+@keyframes bodyBgDrift {
+  0% {
+    background-position: 100% 0%;
+  }
+  100% {
+    background-position: 0% 100%;
+  }
 }
 
 /* Grid scan-line overlay - removed */
