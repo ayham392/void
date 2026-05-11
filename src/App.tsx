@@ -3,6 +3,8 @@ import { supabase } from './lib/supabase';
 import { translate } from './lib/i18n';
 import LandingPage from './LandingPage';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { MessageSquare, PackageOpen, Inbox } from 'lucide-react';
 
 type Lang = 'en' | 'ar';
 type Panel = 'home' | 'messages' | 'products' | 'calculator';
@@ -23,12 +25,12 @@ function useCountUp(target: number) {
   return count;
 }
 
-export default function App() {
+function AppContent() {
   const [session, setSession] = useState<any>(null);
   const [client, setClient] = useState<any>(null);
   const [lang, setLang] = useState<Lang>('en');
   const [loadingApp, setLoadingApp] = useState(true);
-  const [showLanding, setShowLanding] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -36,6 +38,21 @@ export default function App() {
   }, [lang]);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setSession({ user: { id: 'demo-user', email: 'vip@void.system' } });
+      setClient({
+        id: 'mock-client',
+        company_name: 'VIP Subscriber',
+        subscription_tier: 'enterprise',
+        subscription_status: 'active'
+      });
+      setLoadingApp(false);
+      navigate('/dashboard', { replace: true });
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) fetchClient(session.user.id);
@@ -67,17 +84,30 @@ export default function App() {
 
   return (
     <>
-      {!session || !client ? (
-        showLanding ? (
-          <LandingPage lang={lang} setLang={setLang} onLoginClick={() => setShowLanding(false)} />
-        ) : (
-          <Login setSession={setSession} lang={lang} onBack={() => setShowLanding(true)} />
-        )
-      ) : (
-        <Dashboard client={client} lang={lang} setLang={setLang} onLogout={() => { supabase.auth.signOut(); setShowLanding(true); }} />
-      )}
+      <Routes>
+        <Route path="/" element={<LandingPage lang={lang} setLang={setLang} onLoginClick={() => navigate('/login')} />} />
+        <Route path="/login" element={
+          (!session || !client) ? 
+            <Login setSession={setSession} lang={lang} onBack={() => navigate('/')} /> : 
+            <Navigate to="/dashboard" replace />
+        } />
+        <Route path="/dashboard" element={
+          (session && client) ? 
+            <Dashboard client={client} lang={lang} setLang={setLang} onLogout={() => { supabase.auth.signOut(); navigate('/'); }} /> : 
+            <Navigate to="/login" replace />
+        } />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
       <div id="toast" className="toast"></div>
     </>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }
 
@@ -235,7 +265,7 @@ function Dashboard({ client, lang, setLang, onLogout }: any) {
       </div>
 
       <div className="flex-1">
-        {panel === 'home' && <HomePanel t={t} stats={stats} products={products} messages={messages} setPanel={setPanel} lang={lang} />}
+        {panel === 'home' && <HomePanel t={t} stats={stats} products={products} messages={messages} setPanel={setPanel} lang={lang} client={client} />}
         {panel === 'messages' && <MessagesPanel t={t} messages={messages} lang={lang} />}
         {panel === 'products' && <ProductsPanel t={t} products={products} client={client} lang={lang} />}
         {panel === 'calculator' && <CalculatorPanel t={t} />}
@@ -256,165 +286,125 @@ function NavBtn({ active, onClick, text, badge }: any) {
 const weekDaysEn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const weekDaysAr = ['الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت', 'الأحد'];
 
-function HomePanel({ t, stats, products, messages, setPanel, lang }: any) {
-  const activeProds = products.filter((p: any) => p.is_active);
+function HomePanel({ t, stats, products, messages, setPanel, lang, client }: any) {
+  const activeProds = useMemo(() => products.filter((p: any) => p.is_active), [products]);
   const df = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-IQ' : 'en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
   const [msgsDuration, setMsgsDuration] = useState('7d');
   const [salesDuration, setSalesDuration] = useState('7d');
   const [revDuration, setRevDuration] = useState('7d');
 
-  const msgsChartData = useMemo(() => {
-    let points = [];
-    if (msgsDuration === '1h') {
-        for(let i=0; i<12; i++) {
-            points.push({ 
-              name: lang === 'ar' ? `${(i*5)}د` : `${(i*5)}m`, 
-              messages: Math.floor(Math.random() * 5)
-            });
-        }
-    } else if (msgsDuration === '24h') {
-        for(let i=0; i<12; i++) {
-            points.push({ 
-              name: lang === 'ar' ? `${i*2}س` : `${i*2}h`, 
-              messages: Math.floor(Math.random() * 20) + 2
-            });
-        }
-    } else if (msgsDuration === '7d') {
-        const days = lang === 'ar' ? weekDaysAr : weekDaysEn;
-        for(let i=0; i<7; i++) {
-            points.push({ 
-              name: days[i], 
-              messages: Math.floor(Math.random() * 50) + 10
-            });
-        }
-    } else if (msgsDuration === '1m') {
-        for(let i=1; i<=15; i++) {
-            points.push({ 
-              name: lang === 'ar' ? `يوم ${i*2}` : `Day ${i*2}`, 
-              messages: Math.floor(Math.random() * 80) + 20
-            });
-        }
-    } else if (msgsDuration === '3m') {
-        for(let i=1; i<=12; i++) {
-            points.push({ 
-              name: lang === 'ar' ? `أسبوع ${i}` : `W${i}`, 
-              messages: Math.floor(Math.random() * 200) + 50
-            });
-        }
-    } else if (msgsDuration === '1y') {
-        for(let i=1; i<=12; i++) {
-            points.push({ 
-              name: lang === 'ar' ? `شهر ${i}` : `M${i}`, 
-              messages: Math.floor(Math.random() * 800) + 200
-            });
-        }
-    }
-    return points;
-  }, [lang, msgsDuration]);
+  const [dbMessages, setDbMessages] = useState<any[]>([]);
+  const [dbSales, setDbSales] = useState<any[]>([]);
 
-  const salesChartData = useMemo(() => {
-    let points = [];
-    if (salesDuration === '1h') {
-        for(let i=0; i<12; i++) {
-            points.push({ 
-              name: lang === 'ar' ? `${(i*5)}د` : `${(i*5)}m`, 
-              sales: Math.floor(Math.random() * 2)
-            });
-        }
-    } else if (salesDuration === '24h') {
-        for(let i=0; i<12; i++) {
-            points.push({ 
-              name: lang === 'ar' ? `${i*2}س` : `${i*2}h`, 
-              sales: Math.floor(Math.random() * 5)
-            });
-        }
-    } else if (salesDuration === '7d') {
-        const days = lang === 'ar' ? weekDaysAr : weekDaysEn;
-        for(let i=0; i<7; i++) {
-            points.push({ 
-              name: days[i], 
-              sales: Math.floor(Math.random() * 10) + 2
-            });
-        }
-    } else if (salesDuration === '1m') {
-        for(let i=1; i<=15; i++) {
-            points.push({ 
-              name: lang === 'ar' ? `يوم ${i*2}` : `Day ${i*2}`, 
-              sales: Math.floor(Math.random() * 20) + 5
-            });
-        }
-    } else if (salesDuration === '3m') {
-        for(let i=1; i<=12; i++) {
-            points.push({ 
-              name: lang === 'ar' ? `أسبوع ${i}` : `W${i}`, 
-              sales: Math.floor(Math.random() * 40) + 10
-            });
-        }
-    } else if (salesDuration === '1y') {
-        for(let i=1; i<=12; i++) {
-            points.push({ 
-              name: lang === 'ar' ? `شهر ${i}` : `M${i}`, 
-              sales: Math.floor(Math.random() * 150) + 30
-            });
-        }
-    }
-    return points;
-  }, [lang, salesDuration]);
+  useEffect(() => {
+    if (!client) return;
+    const loadRealData = async () => {
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      
+      const [msgRes, salesRes] = await Promise.all([
+        supabase.from('interaction_log')
+          .select('timestamp')
+          .eq('client_id', client.id)
+          .gte('timestamp', oneYearAgo.toISOString()),
+        supabase.from('leads')
+          .select('created_at, amount')
+          .eq('instagram_id', client.instagram_page_id)
+          .eq('payment_status', 'paid')
+          .gte('created_at', oneYearAgo.toISOString())
+      ]);
+      setDbMessages(msgRes.data || []);
+      setDbSales(salesRes.data || []);
+    };
+    loadRealData();
+  }, [client]);
 
-  const { revChartData, totalRev, currency } = useMemo(() => {
-    let avgPrice = 0;
+  const avgPrice = useMemo(() => {
     if (activeProds.length > 0) {
-      avgPrice = activeProds.reduce((sum: number, p: any) => sum + Number(p.price || 0), 0) / activeProds.length;
-    } else {
-      avgPrice = 25; 
+      return activeProds.reduce((sum: number, p: any) => sum + Number(p.price || 0), 0) / activeProds.length;
     }
-    const curr = activeProds[0]?.currency || 'USD';
+    return 25; 
+  }, [activeProds]);
 
-    let points = [];
-    let total = 0;
+  const buildChartData = (
+    data: any[], 
+    dateField: string, 
+    duration: string, 
+    valueKey: string, 
+    isRevenue: boolean = false
+  ) => {
+    let points: any[] = [];
+    const now = new Date();
     
-    if (revDuration === '1h') {
-        for(let i=0; i<12; i++) {
-            let v = avgPrice * Math.random();
-            points.push({ name: lang === 'ar' ? `${(i*5)}د` : `${(i*5)}m`, revenue: Math.floor(v) });
-            total += Math.floor(v);
+    const calculateBucket = (start: Date, end: Date) => {
+       const res = data.filter(d => {
+         const dTime = new Date(d[dateField]).getTime();
+         return dTime >= start.getTime() && dTime < end.getTime();
+       });
+       if (isRevenue) {
+         return res.reduce((sum, d) => sum + (Number(d.amount) || avgPrice), 0);
+       }
+       return res.length;
+    };
+
+    if (duration === '1h') {
+        for(let i=11; i>=0; i--) {
+            const end = new Date(now.getTime() - i * 5 * 60000);
+            const start = new Date(now.getTime() - (i + 1) * 5 * 60000);
+            const timeStr = start.toLocaleTimeString(lang === 'ar' ? 'ar-IQ' : 'en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+            points.push({ name: timeStr, [valueKey]: calculateBucket(start, end) });
         }
-    } else if (revDuration === '24h') {
-        for(let i=0; i<12; i++) {
-            let v = avgPrice * (Math.random() * 3 + 1);
-            points.push({ name: lang === 'ar' ? `${i*2}س` : `${i*2}h`, revenue: Math.floor(v) });
-            total += Math.floor(v);
+    } else if (duration === '24h') {
+        for(let i=11; i>=0; i--) {
+            const end = new Date(now.getTime() - i * 2 * 3600000);
+            const start = new Date(now.getTime() - (i + 1) * 2 * 3600000);
+            const timeStr = start.toLocaleTimeString(lang === 'ar' ? 'ar-IQ' : 'en-US', { hour: '2-digit', hour12: false }) + ':00';
+            points.push({ name: timeStr, [valueKey]: calculateBucket(start, end) });
         }
-    } else if (revDuration === '7d') {
-        const days = lang === 'ar' ? weekDaysAr : weekDaysEn;
-        for(let i=0; i<7; i++) {
-            let v = avgPrice * (Math.random() * 15 + 5);
-            points.push({ name: days[i], revenue: Math.floor(v) });
-            total += Math.floor(v);
+    } else if (duration === '7d') {
+        const daysAr = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+        const daysEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        for(let i=6; i>=0; i--) {
+            const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i + 1);
+            const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+            points.push({ name: lang === 'ar' ? daysAr[start.getDay()] : daysEn[start.getDay()], [valueKey]: calculateBucket(start, end) });
         }
-    } else if (revDuration === '1m') {
-        for(let i=1; i<=15; i++) {
-            let v = avgPrice * (Math.random() * 15 + 5) * 2;
-            points.push({ name: lang === 'ar' ? `يوم ${i*2}` : `Day ${i*2}`, revenue: Math.floor(v) });
-            total += Math.floor(v);
+    } else if (duration === '1m') {
+        for(let i=14; i>=0; i--) {
+            const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i*2 + 1);
+            const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (i+1)*2 + 1);
+            const dateStr = start.toLocaleDateString(lang === 'ar' ? 'ar-IQ' : 'en-US', { month: 'short', day: 'numeric' });
+            points.push({ name: dateStr, [valueKey]: calculateBucket(start, end) });
         }
-    } else if (revDuration === '3m') {
-        for(let i=1; i<=12; i++) {
-            let v = avgPrice * (Math.random() * 80 + 20);
-            points.push({ name: lang === 'ar' ? `أسبوع ${i}` : `W${i}`, revenue: Math.floor(v) });
-            total += Math.floor(v);
+    } else if (duration === '3m') {
+        for(let i=11; i>=0; i--) {
+            const end = new Date(now.getTime() - i * 7 * 86400000);
+            const start = new Date(now.getTime() - (i + 1) * 7 * 86400000);
+            const dateStr = start.toLocaleDateString(lang === 'ar' ? 'ar-IQ' : 'en-US', { month: 'short', day: 'numeric' });
+            points.push({ name: dateStr, [valueKey]: calculateBucket(start, end) });
         }
-    } else if (revDuration === '1y') {
-        for(let i=1; i<=12; i++) {
-            let v = avgPrice * (Math.random() * 300 + 100);
-            points.push({ name: lang === 'ar' ? `شهر ${i}` : `M${i}`, revenue: Math.floor(v) });
-            total += Math.floor(v);
+    } else if (duration === '1y') {
+        for(let i=11; i>=0; i--) {
+            const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+            const mStr = start.toLocaleString(lang === 'ar' ? 'ar-IQ' : 'en-US', { month: 'short' });
+            points.push({ name: mStr, [valueKey]: calculateBucket(start, end) });
         }
     }
 
+    return points;
+  };
+
+  const msgsChartData = useMemo(() => buildChartData(dbMessages, 'timestamp', msgsDuration, 'messages'), [dbMessages, msgsDuration, lang]);
+  const salesChartData = useMemo(() => buildChartData(dbSales, 'created_at', salesDuration, 'sales'), [dbSales, salesDuration, lang]);
+  
+  const { revChartData, totalRev, currency } = useMemo(() => {
+    const curr = activeProds[0]?.currency || 'USD';
+    const points = buildChartData(dbSales, 'created_at', revDuration, 'revenue', true);
+    const total = points.reduce((sum, p) => sum + p.revenue, 0);
     return { revChartData: points, totalRev: total, currency: curr };
-  }, [activeProds, revDuration, lang]);
+  }, [dbSales, revDuration, lang, avgPrice, activeProds]);
 
   return (
     <div className="panel active">
@@ -532,7 +522,10 @@ function HomePanel({ t, stats, products, messages, setPanel, lang }: any) {
           </div>
           <div>
             {messages.length === 0 ? (
-              <div className="empty-state">{t('msgs_empty')}</div>
+              <div className="empty-state flex flex-col items-center justify-center py-10 text-[color:var(--text-muted)] gap-3">
+                <MessageSquare className="w-10 h-10 opacity-20" />
+                <div className="text-sm">{t('msgs_empty')}</div>
+              </div>
             ) : (
               messages.slice(0, 6).map((m: any) => (
                 <div className="mini-msg" key={m.id}>
@@ -554,7 +547,10 @@ function HomePanel({ t, stats, products, messages, setPanel, lang }: any) {
           </div>
           <div>
             {activeProds.length === 0 ? (
-              <div className="empty-state">{t('prods_empty')}</div>
+              <div className="empty-state flex flex-col items-center justify-center py-10 text-[color:var(--text-muted)] gap-3">
+                <PackageOpen className="w-10 h-10 opacity-20" />
+                <div className="text-sm">{t('prods_empty')}</div>
+              </div>
             ) : (
               activeProds.slice(0, 6).map((p: any, i: number) => (
                 <div className="top-prod-item" key={p.id}>
@@ -605,8 +601,9 @@ function MessagesPanel({ t, messages, lang }: any) {
       </div>
       <div className="msgs-list">
         {visible.length === 0 ? (
-          <div className="empty-state">
-            <div>{t('msgs_empty')}</div>
+          <div className="empty-state flex flex-col items-center justify-center py-20 text-[color:var(--text-muted)] gap-4">
+            <Inbox className="w-16 h-16 opacity-10" />
+            <div className="text-lg">{t('msgs_empty')}</div>
           </div>
         ) : (
           visible.map((m: any) => {
@@ -759,8 +756,9 @@ function ProductsPanel({ t, products, client, lang }: any) {
       <div className="products-layout">
         <div className="products-grid">
           {sortedProducts.length === 0 ? (
-            <div className="empty-state col-span-full">
-              <div>{searchQuery ? t('prods_empty') : t('prods_empty')}</div>
+            <div className="empty-state col-span-full flex flex-col items-center justify-center py-20 text-[color:var(--text-muted)] gap-4">
+              <PackageOpen className="w-16 h-16 opacity-10" />
+              <div className="text-lg">{searchQuery ? t('prods_empty') : t('prods_empty')}</div>
             </div>
           ) : (
             sortedProducts.map((p: any) => (

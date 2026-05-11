@@ -19,6 +19,11 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
   ]);
   const [isTyping, setIsTyping] = useState(false);
 
+  // Active plan for neon hover effect
+  const [activePlan, setActivePlan] = useState<string>('Pro');
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [selectedPlanInfo, setSelectedPlanInfo] = useState('');
+
   const handleChatSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim() || isTyping) return;
@@ -47,16 +52,68 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
     { name: 'WooCommerce', icon: <Store className="w-8 h-8" /> },
   ];
 
+  const scrollToPricing = () => {
+    document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handlePayment = async (planName: string, amount: number) => {
+    setSelectedPlanInfo(planName);
+    setShowContactModal(true);
+  };
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.2
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.6, ease: "easeOut" }
+    }
+  };
+
+  const pricingCardVariants = {
+    hidden: { opacity: 0, y: 60, scale: 0.95 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      scale: 1,
+      transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#000a0a] text-[#f8fafc] font-sans selection:bg-[#00ff99] selection:text-black">
       {/* Navigation */}
-      <nav className="border-b border-[#00ff9915] bg-[#000a0a]/80 backdrop-blur-md sticky top-0 z-50">
+      <nav className="border-b border-[#00ff9920] bg-[#000a0a]/60 backdrop-blur-xl sticky top-0 z-50 shadow-[0_4px_30px_rgba(0,255,153,0.05)] transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2">
-              <div className="text-xl font-bold tracking-widest text-[#f8fafc]">
+              <div 
+                className="text-xl font-bold tracking-widest text-[#f8fafc] cursor-pointer"
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              >
                 VOID<span className="text-[#00ff99]">.</span>
               </div>
+            </div>
+            <div className="hidden md:flex items-center gap-8">
+              <a href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-sm font-medium text-[#94a3b8] hover:text-[#00ff99] transition-colors">
+                {lang === 'en' ? 'Home' : 'الرئيسية'}
+              </a>
+              <a href="#features" className="text-sm font-medium text-[#94a3b8] hover:text-[#00ff99] transition-colors">
+                {lang === 'en' ? 'What We Offer' : 'ماذا نقدم'}
+              </a>
+              <a href="#pricing" className="text-sm font-medium text-[#94a3b8] hover:text-[#00ff99] transition-colors">
+                {lang === 'en' ? 'Pricing' : 'الأسعار'}
+              </a>
             </div>
             <div className="flex items-center gap-4">
               <button 
@@ -67,9 +124,15 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
               </button>
               <button 
                 onClick={onLoginClick}
-                className="bg-[#00ff99] hover:bg-[#00cc7a] text-black text-sm font-semibold py-2 px-5 rounded-md transition-colors shadow-[0_0_15px_rgba(0,255,153,0.3)]"
+                className="text-sm font-semibold text-[#f8fafc] hover:text-[#00ff99] transition-colors py-2 px-3"
               >
                 {lang === 'en' ? 'Login' : 'تسجيل الدخول'}
+              </button>
+              <button 
+                onClick={scrollToPricing}
+                className="bg-[#00ff99] hover:bg-[#00cc7a] text-black text-sm font-semibold py-2 px-5 rounded-md transition-colors shadow-[0_0_15px_rgba(0,255,153,0.3)]"
+              >
+                {lang === 'en' ? 'Get Started' : 'ابدأ الآن'}
               </button>
             </div>
           </div>
@@ -77,14 +140,47 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
       </nav>
 
       {/* Hero Section */}
-      <div className="relative overflow-hidden pt-24 pb-20">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#00ff99]/10 via-[#000a0a]/20 to-[#000a0a] pointer-events-none" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+      <div className="relative overflow-hidden pt-32 pb-24 border-b border-[#00ff99]/10">
+        {/* Background Video & Overlays */}
+        <div className="absolute inset-0 w-full h-full pointer-events-none bg-[#000a0a]">
+          <video 
+            autoPlay 
+            loop 
+            muted 
+            playsInline 
+            className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-screen scale-105"
+          >
+            <source src="https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4" type="video/mp4" />
+          </video>
+          {/* Subtle Grid Overlay */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#00ff9910_1px,transparent_1px),linear-gradient(to_bottom,#00ff9910_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
+          
+          {/* Gradients to improve text readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#000a0a] via-[#000a0a]/60 to-[#000a0a]/20" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#000a0a] via-transparent to-[#000a0a]" />
+          
+          {/* Soft neon glow behind the main text */}
+          <div className="absolute top-[30%] left-1/2 -translate-x-1/2 w-[600px] sm:w-[800px] h-[500px] sm:h-[600px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#00ff99]/20 via-[#00ff99]/5 to-transparent rounded-full blur-[100px] pointer-events-none mix-blend-screen animate-pulse duration-1000"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="mb-8 inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-[#00ff99]/30 bg-[#000a0a]/60 backdrop-blur-md text-[#00ff99] text-sm font-medium shadow-[0_0_20px_rgba(0,255,153,0.15)]"
+          >
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ff99] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#00ff99]"></span>
+            </span>
+            {lang === 'en' ? 'Void System v2.0 is Live' : 'نظام ڤويد 2.0 متاح الآن'}
+          </motion.div>
           <motion.h1 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6"
+            className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]"
           >
             {lang === 'en' ? 'Your AI Command Center' : 'مركز القيادة بالذكاء الاصطناعي'}
           </motion.h1>
@@ -92,7 +188,7 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-xl text-[#94a3b8] max-w-2xl mx-auto mb-10"
+            className="text-xl md:text-2xl text-[#cbd5e1] max-w-3xl mx-auto mb-10 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] leading-relaxed font-medium"
           >
             {lang === 'en' 
               ? 'Manage messages, track leads, and boost your sales with our state-of-the-art AI-powered platform.' 
@@ -105,13 +201,13 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
             className="flex justify-center gap-4"
           >
             <button 
-              onClick={onLoginClick}
-              className="bg-[#00ff99] hover:bg-[#00cc7a] text-black text-base font-bold py-3 px-8 rounded-md transition-all shadow-[0_0_20px_rgba(0,255,153,0.4)] hover:shadow-[0_0_30px_rgba(0,255,153,0.6)] flex items-center gap-2"
+              onClick={scrollToPricing}
+              className="bg-[#00ff99] hover:bg-[#00cc7a] text-black text-lg font-bold py-4 px-10 rounded-full transition-all shadow-[0_0_20px_rgba(0,255,153,0.4)] hover:shadow-[0_0_30px_rgba(0,255,153,0.6)] flex items-center gap-2 transform hover:-translate-y-1"
             >
               {lang === 'en' ? 'Get Started' : 'ابدأ الآن'}
               <ArrowRight className="w-5 h-5" />
             </button>
-            <a href="#features" className="bg-[#111] hover:bg-[#222] border border-[#333] text-[#f8fafc] text-base font-bold py-3 px-8 rounded-md transition-colors flex items-center">
+            <a href="#features" className="bg-[#050f0a]/80 hover:bg-[#000a0a] border border-[#00ff99]/30 hover:border-[#00ff99]/60 text-[#f8fafc] text-lg font-bold py-4 px-10 rounded-full transition-all flex items-center shadow-[0_4px_20px_rgba(0,0,0,0.4)] backdrop-blur-md transform hover:-translate-y-1">
               {lang === 'en' ? 'Learn More' : 'اعرف المزيد'}
             </a>
           </motion.div>
@@ -136,7 +232,7 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
             <div className={`p-6 h-[300px] overflow-y-auto flex flex-col gap-4 scroll-smooth ${lang === 'ar' ? 'items-end' : 'items-start'}`}>
               {chatMessages.map((msg, idx) => (
                 <div key={idx} className={`flex w-full ${msg.role === 'user' ? (lang === 'en' ? 'justify-end' : 'justify-start') : (lang === 'en' ? 'justify-start' : 'justify-end')}`}>
-                  <div className={`max-w-[80%] p-3 rounded-2xl ${msg.role === 'user' ? `bg-[#00ff99] text-black ${lang === 'en' ? 'rounded-tr-sm' : 'rounded-tl-sm'}` : `bg-[#111] text-white border border-[#222] ${lang === 'en' ? 'rounded-tl-sm' : 'rounded-tr-sm'}`}`}>
+                  <div className={`max-w-[80%] px-4 py-3 rounded-2xl shadow-lg transition-transform hover:scale-[1.02] ${msg.role === 'user' ? `bg-gradient-to-r from-[#00ff99] to-[#00cc7a] text-black shadow-[0_4px_15px_rgba(0,255,153,0.3)] ${lang === 'en' ? 'rounded-tr-sm' : 'rounded-tl-sm'}` : `bg-[#111]/80 backdrop-blur-md text-white border border-[#00ff9930] shadow-[0_4px_15px_rgba(0,0,0,0.5)] ${lang === 'en' ? 'rounded-tl-sm' : 'rounded-tr-sm'}`}`}>
                     {msg.text}
                   </div>
                 </div>
@@ -200,30 +296,168 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
         </motion.div>
       </div>
 
-      {/* Features Section */}
-      <div id="features" className="py-24 bg-[#030d06]">
+      {/* Feature Highlight: AI Auto-Replies & Dashboard */}
+      <div className="py-24 bg-[#0a1410] border-t border-[#00ff9910] overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          
+          <div className="flex flex-col lg:flex-row items-center gap-16">
+            
+            {/* Text Content */}
+            <motion.div 
+              initial={{ opacity: 0, x: lang === 'ar' ? 50 : -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.7 }}
+              className="lg:w-1/2"
+            >
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#00ff99]/10 border border-[#00ff99]/20 text-[#00ff99] text-xs font-bold mb-6">
+                <MessageCircle className="w-4 h-4" />
+                {lang === 'en' ? 'Core Feature' : 'ميزة أساسية'}
+              </div>
+              <h2 className="text-4xl md:text-5xl font-extrabold mb-6 leading-tight">
+                {lang === 'en' ? (
+                  <>Autopilot Your <span className="text-[#00ff99]">Customer Service.</span></>
+                ) : (
+                  <>خدمة عملاء على <span className="text-[#00ff99]">الطيار الآلي.</span></>
+                )}
+              </h2>
+              <p className="text-lg md:text-xl text-[#94a3b8] mb-8 leading-relaxed">
+                {lang === 'en' 
+                  ? 'Void System seamlessly connects to your social platforms (Instagram, Facebook, etc.). Our advanced AI understands context, engages naturally, and funnels potential buyers directly to your dashboard.'
+                  : 'نظام ڤويد يتصل بسلاسة مع منصات التواصل الاجتماعي الخاصة بك. يفهم الذكاء الاصطناعي المتقدم لدينا السياق، ويتفاعل بشكل طبيعي، ويوجه المشترين المحتملين مباشرة إلى لوحة التحكم الخاصة بك.'}
+              </p>
+              
+              <ul className="space-y-4 mb-10">
+                {[
+                  lang === 'en' ? 'Smart intent recognition and exact product matching' : 'التعرف الذكي على النوايا والمطابقة الدقيقة للمنتجات',
+                  lang === 'en' ? 'Fully bilingual: Native Arabic and English support' : 'ثنائي اللغة بالكامل: دعم أصلي للغات العربية والإنجليزية',
+                  lang === 'en' ? 'Centralized dashboard to view leads and close sales' : 'لوحة تحكم مركزية لعرض العملاء وإتمام المبيعات',
+                ].map((item, id) => (
+                  <li key={id} className="flex items-start gap-3 text-[#cbd5e1] font-medium">
+                    <div className="w-6 h-6 rounded bg-[#00ff99]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="w-4 h-4 text-[#00ff99]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                    </div>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+
+            {/* Application Mockup */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, rotateY: lang === 'ar' ? -10 : 10 }}
+              whileInView={{ opacity: 1, scale: 1, rotateY: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.8, type: "spring" }}
+              className="lg:w-1/2 relative perspective-1000"
+            >
+              {/* Glow Behind Mockup */}
+              <div className="absolute inset-0 bg-[#00ff99] opacity-[0.05] blur-[80px] rounded-full scale-105" />
+
+              {/* Dashboard Frame */}
+              <div className="relative bg-[#050f0a] border border-[#00ff99]/30 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden">
+                
+                {/* Header */}
+                <div className="bg-[#000a0a] border-b border-[#00ff99]/20 p-4 flex items-center justify-between">
+                  <div className="flex gap-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                    <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  </div>
+                  <div className="text-xs font-mono text-[#00ff99] border border-[#00ff99]/20 bg-[#00ff99]/10 px-2 py-1 rounded">Void_Dashboard v2.0</div>
+                </div>
+
+                <div className="flex">
+                  {/* Sidebar Mock */}
+                  <div className="w-16 md:w-20 border-r border-[#00ff99]/10 bg-[#000a0a] p-3 flex flex-col items-center gap-6 pt-6 opacity-60">
+                     <div className="w-8 h-8 rounded bg-[#222]"></div>
+                     <div className="w-8 h-8 rounded bg-[#00ff99]/20 border border-[#00ff99]/50"></div>
+                     <div className="w-8 h-8 rounded bg-[#222]"></div>
+                     <div className="w-8 h-8 rounded bg-[#222]"></div>
+                  </div>
+
+                  {/* Main Content Area */}
+                  <div className="flex-1 p-4 md:p-6 bg-[linear-gradient(to_bottom,transparent_0%,#000a0a_100%)]">
+                    <div className="flex justify-between items-end mb-6">
+                      <div>
+                        <div className="text-lg font-bold text-white mb-1">Live Interactions</div>
+                        <div className="text-xs text-[#94a3b8]">AI actively engaging 3 customers</div>
+                      </div>
+                      <div className="px-3 py-1 hidden sm:block bg-green-500/20 text-green-400 text-xs rounded-full border border-green-500/30">
+                        System Active
+                      </div>
+                    </div>
+
+                    {/* Chat Bubble Mockups */}
+                    <div className="space-y-4">
+                      {/* Customer */}
+                      <div className="flex gap-3 items-end w-[85%]">
+                        <div className="w-8 h-8 rounded-full bg-[#111] border border-[#333] flex-shrink-0"></div>
+                        <div className="bg-[#111] p-3 rounded-2xl rounded-bl-sm border border-[#222] text-sm text-[#cbd5e1]">
+                          Do you have this jacket in large? And how long is delivery?
+                        </div>
+                      </div>
+                      
+                      {/* AI Reply */}
+                      <div className="flex gap-3 items-end w-[85%] ml-auto flex-row-reverse">
+                        <div className="w-8 h-8 rounded-full bg-[#00ff99]/20 border border-[#00ff99]/50 flex items-center justify-center flex-shrink-0 text-[#00ff99]">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                        </div>
+                        <div className="bg-[#00ff99]/10 p-3 rounded-2xl rounded-br-sm border border-[#00ff99]/30 text-sm text-[#e2e8f0]">
+                          Yes, we have 4 large ones in stock! Delivery to your registered region takes 2-3 business days. Would you like me to send a checkout link?
+                        </div>
+                      </div>
+
+                      {/* AI Thinking/Action overlay */}
+                      <div className="mt-4 pt-4 border-t border-[#00ff99]/10 relative">
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#000a0a] px-2 text-[10px] text-[#00ff99] border border-[#00ff99]/20 rounded tracking-widest uppercase">
+                          AI Action Triggered
+                        </div>
+                        <div className="flex justify-between items-center bg-[#050f0a] border border-[#00ff99]/20 p-3 rounded-lg text-xs text-[#94a3b8]">
+                           <span className="flex items-center gap-2">
+                             <div className="w-2 h-2 rounded-full bg-[#00ff99] animate-pulse"></div>
+                             Lead qualified & saved to database
+                           </span>
+                           <span className="text-white bg-[#111] px-2 py-0.5 rounded border border-[#333]">View Lead</span>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+          </div>
+        </div>
+      </div>
+
+      <motion.div 
+        id="features" 
+        className="py-24 bg-[#030d06]"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
+        variants={containerVariants}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
+          <motion.div variants={itemVariants} className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">{lang === 'en' ? 'What We Offer' : 'ماذا نقدم'}</h2>
             <div className="w-24 h-1 bg-[#00ff99] mx-auto rounded-full" />
           </motion.div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-              className="bg-[#0a1410] border border-[#00ff9915] p-8 rounded-xl hover:border-[#00ff9940] hover:shadow-[0_0_30px_rgba(0,255,153,0.1)] transition-all duration-300 transform hover:-translate-y-2"
+              variants={itemVariants}
+              whileHover="hover"
+              className="bg-[#0a1410] border border-[#00ff9915] p-8 rounded-xl hover:border-[#00ff9940] hover:shadow-[0_0_30px_rgba(0,255,153,0.1)] transition-all duration-300 transform hover:-translate-y-2 cursor-pointer"
             >
-              <div className="w-12 h-12 bg-[#00ff99]/10 rounded-lg flex items-center justify-center mb-6">
+              <motion.div 
+                variants={{ hover: { scale: 1.15, rotate: [0, -10, 10, -5, 5, 0], transition: { duration: 0.6 } } }}
+                className="w-12 h-12 bg-[#00ff99]/10 rounded-lg flex items-center justify-center mb-6 origin-center"
+              >
                 <MessageCircle className="w-6 h-6 text-[#00ff99]" />
-              </div>
+              </motion.div>
               <h3 className="text-xl font-bold mb-3">{lang === 'en' ? 'AI Auto-Replies' : 'ردود تلقائية متطورة'}</h3>
               <p className="text-[#94a3b8] leading-relaxed">
                 {lang === 'en' ? 'Instantly respond to customer inquiries across all your social channels with intelligent, context-aware AI messages.' : 'الرد الفوري على استفسارات العملاء عبر جميع قنواتك بذكاء وفي السياق المناسب.'}
@@ -231,17 +465,18 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
             </motion.div>
             
             <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-              className="bg-[#0a1410] border border-[#00ff9915] p-8 rounded-xl hover:border-[#00ff9940] hover:shadow-[0_0_30px_rgba(0,255,153,0.1)] transition-all duration-300 transform hover:-translate-y-2"
+              variants={itemVariants}
+              whileHover="hover"
+              className="bg-[#0a1410] border border-[#00ff9915] p-8 rounded-xl hover:border-[#00ff9940] hover:shadow-[0_0_30px_rgba(0,255,153,0.1)] transition-all duration-300 transform hover:-translate-y-2 cursor-pointer"
             >
-              <div className="w-12 h-12 bg-[#00ff99]/10 rounded-lg flex items-center justify-center mb-6">
+              <motion.div 
+                variants={{ hover: { scale: 1.15, y: -5, transition: { duration: 0.3, yoyo: Infinity } } }}
+                className="w-12 h-12 bg-[#00ff99]/10 rounded-lg flex items-center justify-center mb-6"
+              >
                 <svg className="w-6 h-6 text-[#00ff99]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-              </div>
+              </motion.div>
               <h3 className="text-xl font-bold mb-3">{lang === 'en' ? 'Advanced Analytics' : 'تحليلات متقدمة'}</h3>
               <p className="text-[#94a3b8] leading-relaxed">
                 {lang === 'en' ? 'Track your sales, revenue, and message volume in real-time. Make data-driven decisions to grow your business.' : 'تتبع المبيعات والإيرادات وحجم الرسائل في الوقت الفعلي واتخذ قرارات بناءً على البيانات.'}
@@ -249,15 +484,16 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
             </motion.div>
             
             <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.3 }}
-              className="bg-[#0a1410] border border-[#00ff9915] p-8 rounded-xl hover:border-[#00ff9940] hover:shadow-[0_0_30px_rgba(0,255,153,0.1)] transition-all duration-300 transform hover:-translate-y-2"
+              variants={itemVariants}
+              whileHover="hover"
+              className="bg-[#0a1410] border border-[#00ff9915] p-8 rounded-xl hover:border-[#00ff9940] hover:shadow-[0_0_30px_rgba(0,255,153,0.1)] transition-all duration-300 transform hover:-translate-y-2 cursor-pointer"
             >
-              <div className="w-12 h-12 bg-[#00ff99]/10 rounded-lg flex items-center justify-center mb-6">
+              <motion.div 
+                 variants={{ hover: { scale: 1.15, rotate: 180, transition: { duration: 0.5 } } }}
+                 className="w-12 h-12 bg-[#00ff99]/10 rounded-lg flex items-center justify-center mb-6 origin-center"
+              >
                 <Store className="w-6 h-6 text-[#00ff99]" />
-              </div>
+              </motion.div>
               <h3 className="text-xl font-bold mb-3">{lang === 'en' ? 'Product Management' : 'إدارة المنتجات'}</h3>
               <p className="text-[#94a3b8] leading-relaxed">
                 {lang === 'en' ? 'Easily add, edit, and organize your products. Export data seamlessly to keep your inventory in sync.' : 'إضافة وتعديل وتنظيم منتجاتك بسهولة مع إمكانية تصدير البيانات لتحديث مخزونك.'}
@@ -265,124 +501,161 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
             </motion.div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Pricing Section */}
-      <div id="pricing" className="py-24">
+      <motion.div 
+        id="pricing" 
+        className="py-24"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.1 }}
+        variants={containerVariants}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
+          <motion.div variants={itemVariants} className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">{lang === 'en' ? 'Simple, Transparent Pricing' : 'أسعار بسيطة وشفافة'}</h2>
             <div className="w-24 h-1 bg-[#00ff99] mx-auto rounded-full" />
           </motion.div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {/* Basic Tier */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
+            {/* Starter Tier */}
             <motion.div 
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="bg-[#050f0a] border border-[#1a1a1a] p-8 rounded-2xl flex flex-col hover:border-[#00ff9940] transition-colors"
+              variants={pricingCardVariants}
+              onMouseEnter={() => setActivePlan('Starter')}
+              className={`p-8 rounded-2xl flex flex-col transition-all duration-300 transform md:-translate-y-4 ${activePlan === 'Starter' ? 'bg-[#000a0a] border-2 border-[#00ff99] shadow-[0_0_30px_rgba(0,255,153,0.15)] relative scale-105 z-10' : 'bg-[#050f0a] border border-[#1a1a1a] hover:border-[#00ff9940]'}`}
             >
               <h3 className="text-2xl font-bold mb-2">{lang === 'en' ? 'Starter' : 'البداية'}</h3>
-              <div className="text-[#94a3b8] mb-6">{lang === 'en' ? 'For individuals and small setups' : 'للأفراد والمشاريع الصغيرة'}</div>
-              <div className="text-4xl font-extrabold mb-8">$29<span className="text-lg text-[#94a3b8] font-normal">/mo</span></div>
+              <div className="text-[#94a3b8] mb-6 min-h-[48px]">{lang === 'en' ? 'For small pages needing basic FAQ and order taking.' : 'للصفحات الصغيرة التي تحتاج إلى ردود أساسية وأخذ طلبات.'}</div>
+              <div className="text-3xl font-extrabold mb-8 flex items-baseline">150,000 <span className="text-sm text-[#94a3b8] font-normal ml-2">IQD /mo</span></div>
               
-              <ul className="flex-1 space-y-4 mb-8">
+              <ul className="flex-1 space-y-4 mb-8 text-sm">
                 <li className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-[#00ff99] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  <span>{lang === 'en' ? 'Up to 1,000 auto-replies' : 'حتى 1000 رد تلقائي'}</span>
+                  <span>{lang === 'en' ? '2,000 Conversations / month' : '2,000 محادثة / الشهر'}</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-[#00ff99] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  <span>{lang === 'en' ? 'Basic Analytics' : 'تحليلات أساسية'}</span>
+                  <span>{lang === 'en' ? '1 Channel Included (+50k for extras)' : 'قناة واحدة متضمنة (+50 ألف للإضافية)'}</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-[#00ff99] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  <span>{lang === 'en' ? '50 Products limit' : 'كحد أقصى 50 منتج'}</span>
+                  <span>{lang === 'en' ? 'All Standard Dashboard & Memory features' : 'كافة ميزات لوحة التحكم والذاكرة القياسية'}</span>
                 </li>
               </ul>
               
-              <button onClick={onLoginClick} className="w-full bg-[#111] hover:bg-[#222] border border-[#333] text-white font-semibold py-3 rounded-md transition-colors">
-                {lang === 'en' ? 'Get Started' : 'ابدأ الآن'}
+              <button onClick={() => handlePayment('Starter', 150000)} className={`w-full font-semibold py-3 rounded-md transition-colors disabled:opacity-50 ${activePlan === 'Starter' ? 'bg-[#00ff99] hover:bg-[#00cc7a] text-black shadow-[0_0_15px_rgba(0,255,153,0.3)]' : 'bg-[#111] hover:bg-[#222] border border-[#333] text-white'}`}>
+                {lang === 'en' ? 'Get Starter' : 'ابدأ بخطة البداية'}
               </button>
             </motion.div>
             
             {/* Pro Tier */}
             <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="bg-[#000a0a] border-2 border-[#00ff99] p-8 rounded-2xl flex flex-col relative shadow-[0_0_30px_rgba(0,255,153,0.15)] transform md:-translate-y-4"
+              variants={pricingCardVariants}
+              onMouseEnter={() => setActivePlan('Pro')}
+              className={`p-8 rounded-2xl flex flex-col transition-all duration-300 transform md:-translate-y-4 ${activePlan === 'Pro' ? 'bg-[#000a0a] border-2 border-[#00ff99] shadow-[0_0_30px_rgba(0,255,153,0.15)] relative scale-105 z-10' : 'bg-[#050f0a] border border-[#1a1a1a] hover:border-[#00ff9940]'}`}
             >
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#00ff99] text-black text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                {lang === 'en' ? 'Most Popular' : 'الأكثر شيوعاً'}
-              </div>
-              <h3 className="text-2xl font-bold mb-2">{lang === 'en' ? 'Professional' : 'المحترفين'}</h3>
-              <div className="text-[#94a3b8] mb-6">{lang === 'en' ? 'For growing businesses' : 'للشركات النامية'}</div>
-              <div className="text-4xl font-extrabold mb-8">$79<span className="text-lg text-[#94a3b8] font-normal">/mo</span></div>
+              {activePlan === 'Pro' && (
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#00ff99] text-black text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider whitespace-nowrap">
+                  {lang === 'en' ? 'Most Popular' : 'الأكثر شيوعاً'}
+                </div>
+              )}
+              <h3 className="text-2xl font-bold mb-2">{lang === 'en' ? 'Pro' : 'المحترفين'}</h3>
+              <div className="text-[#94a3b8] mb-6 min-h-[48px]">{lang === 'en' ? 'Growing stores needing steady stock management & leads.' : 'المتاجر النامية التي تحتاج لإدارة مخزون مستقرة ومبيعات.'}</div>
+              <div className="text-3xl font-extrabold mb-8 flex items-baseline">350,000 <span className="text-sm text-[#94a3b8] font-normal ml-2">IQD /mo</span></div>
               
-              <ul className="flex-1 space-y-4 mb-8">
+              <ul className="flex-1 space-y-4 mb-8 text-sm">
                 <li className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-[#00ff99] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  <span>{lang === 'en' ? 'Unlimited auto-replies' : 'ردود تلقائية غير محدودة'}</span>
+                  <span>{lang === 'en' ? '6,000 Conversations / month' : '6,000 محادثة / الشهر'}</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-[#00ff99] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  <span>{lang === 'en' ? 'Advanced Analytics & Exports' : 'تحليلات متقدمة وتصدير البيانات'}</span>
+                  <span>{lang === 'en' ? '1 Channel Included (+50k for extras)' : 'قناة واحدة متضمنة (+50 ألف للإضافية)'}</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-[#00ff99] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  <span>{lang === 'en' ? 'Unlimited Products' : 'منتجات غير محدودة'}</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-[#00ff99] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  <span>{lang === 'en' ? 'Priority Support' : 'دعم فني ذو أولوية'}</span>
+                  <span>{lang === 'en' ? 'All Standard Features' : 'جميع الميزات القياسية'}</span>
                 </li>
               </ul>
               
-              <button onClick={onLoginClick} className="w-full bg-[#00ff99] hover:bg-[#00cc7a] text-black font-bold py-3 rounded-md transition-colors shadow-[0_0_15px_rgba(0,255,153,0.3)]">
-                {lang === 'en' ? 'Get Professional' : 'احصل على الخطة'}
+              <button onClick={() => handlePayment('Pro', 350000)} className={`w-full font-semibold py-3 rounded-md transition-colors disabled:opacity-50 ${activePlan === 'Pro' ? 'bg-[#00ff99] hover:bg-[#00cc7a] text-black shadow-[0_0_15px_rgba(0,255,153,0.3)]' : 'bg-[#111] hover:bg-[#222] border border-[#333] text-white'}`}>
+                {lang === 'en' ? 'Get Pro' : 'احصل على الخطة'}
+              </button>
+            </motion.div>
+
+            {/* Business Tier */}
+            <motion.div 
+              variants={pricingCardVariants}
+              onMouseEnter={() => setActivePlan('Business')}
+              className={`p-8 rounded-2xl flex flex-col transition-all duration-300 transform md:-translate-y-4 ${activePlan === 'Business' ? 'bg-[#000a0a] border-2 border-[#00ff99] shadow-[0_0_30px_rgba(0,255,153,0.15)] relative scale-105 z-10' : 'bg-[#050f0a] border border-[#1a1a1a] hover:border-[#00ff9940]'}`}
+            >
+              <h3 className="text-2xl font-bold mb-2">{lang === 'en' ? 'Business' : 'الأعمال'}</h3>
+              <div className="text-[#94a3b8] mb-6 min-h-[48px]">{lang === 'en' ? 'High-volume businesses pulling serious daily traffic.' : 'الشركات ذات الحجم الكبير بحركة مرور يومية هائلة.'}</div>
+              <div className="text-3xl font-extrabold mb-8 flex items-baseline">600,000 <span className="text-sm text-[#94a3b8] font-normal ml-2">IQD /mo</span></div>
+              
+              <ul className="flex-1 space-y-4 mb-8 text-sm">
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-[#00ff99] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                  <span>{lang === 'en' ? '15,000 Conversations / month' : '15,000 محادثة / الشهر'}</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-[#00ff99] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                  <span>{lang === 'en' ? '1 Channel Included (+50k for extras)' : 'قناة واحدة متضمنة (+50 ألف للإضافية)'}</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-[#00ff99] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                  <span>{lang === 'en' ? 'Standard Features + Appointment Booking' : 'ميزات قياسية + حجز المواعيد'}</span>
+                </li>
+              </ul>
+              
+              <button onClick={() => handlePayment('Business', 600000)} className={`w-full font-semibold py-3 rounded-md transition-colors disabled:opacity-50 ${activePlan === 'Business' ? 'bg-[#00ff99] hover:bg-[#00cc7a] text-black shadow-[0_0_15px_rgba(0,255,153,0.3)]' : 'bg-[#111] hover:bg-[#222] border border-[#333] text-white'}`}>
+                {lang === 'en' ? 'Get Business' : 'احصل على الخطة'}
               </button>
             </motion.div>
             
             {/* Enterprise Tier */}
             <motion.div 
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="bg-[#050f0a] border border-[#1a1a1a] p-8 rounded-2xl flex flex-col hover:border-[#00ff9940] transition-colors"
+              variants={pricingCardVariants}
+              onMouseEnter={() => setActivePlan('Enterprise')}
+              className={`p-8 rounded-2xl flex flex-col transition-all duration-300 transform md:-translate-y-4 ${activePlan === 'Enterprise' ? 'bg-[#000a0a] border-2 border-[#00ff99] shadow-[0_0_30px_rgba(0,255,153,0.15)] relative scale-105 z-10' : 'bg-gradient-to-b from-[#00ff9915] to-[#050f0a] border border-[#00ff9930] hover:border-[#00ff9960] relative'}`}
             >
-              <h3 className="text-2xl font-bold mb-2">{lang === 'en' ? 'Enterprise' : 'الشركات'}</h3>
-              <div className="text-[#94a3b8] mb-6">{lang === 'en' ? 'Custom solutions for large teams' : 'حلول مخصصة للفرق الكبيرة'}</div>
-              <div className="text-4xl font-extrabold mb-8">{lang === 'en' ? 'Custom' : 'مخصص'}</div>
+              <div className="absolute -top-3 -right-3">
+                 <span className="flex h-6 w-6 relative">
+                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ff99] opacity-75"></span>
+                   <span className="relative inline-flex rounded-full h-6 w-6 bg-[#00ff99] items-center justify-center text-black text-xs font-bold pt-0.5">VIP</span>
+                 </span>
+              </div>
+              <h3 className="text-2xl font-bold mb-2 text-[#00ff99]">{lang === 'en' ? 'Enterprise' : 'الشركات الكبرى'}</h3>
+              <div className="text-[#94a3b8] mb-6 min-h-[48px]">{lang === 'en' ? 'The ultimate custom VIP solution.' : 'الحل المخصص والمهم جداً لشركتك.'}</div>
+              <div className="text-3xl font-extrabold mb-8 min-h-[36px] flex items-baseline">1,000,000+ <span className="text-sm text-[#94a3b8] font-normal ml-2">IQD /mo</span></div>
               
-              <ul className="flex-1 space-y-4 mb-8">
+              <ul className="flex-1 space-y-4 mb-8 text-sm">
                 <li className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-[#00ff99] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  <span>{lang === 'en' ? 'Custom AI Model Training' : 'تدريب نموذج ذكاء اصطناعي مخصص'}</span>
+                  <span>{lang === 'en' ? '30,000+ Conversations / month' : '30,000+ محادثة / الشهر'}</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-[#00ff99] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  <span>{lang === 'en' ? 'API Access' : 'صلاحية وصول API'}</span>
+                  <span>{lang === 'en' ? 'ALL Channels Included (No extra fees)' : 'كافة القنوات المتضمنة (بدون رسوم)'}</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-[#00ff99] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  <span>{lang === 'en' ? 'Dedicated Account Manager' : 'مدير حساب مخصص'}</span>
+                  <span>{lang === 'en' ? 'Custom AI Persona & Deep Training' : 'تدريب عميق لشخصية الذكاء الاصطناعي'}</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-[#00ff99] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                  <span>{lang === 'en' ? 'Dedicated Account Manager & Server Priority' : 'مدير حساب مخصص وأولوية في الخادم'}</span>
                 </li>
               </ul>
               
-              <button onClick={onLoginClick} className="w-full bg-[#111] hover:bg-[#222] border border-[#333] text-white font-semibold py-3 rounded-md transition-colors">
+              <button onClick={() => handlePayment('Enterprise', 1000000)} className={`w-full font-semibold py-3 rounded-md transition-colors disabled:opacity-50 ${activePlan === 'Enterprise' ? 'bg-[#00ff99] hover:bg-[#00cc7a] text-black shadow-[0_0_15px_rgba(0,255,153,0.3)]' : 'bg-[#111] hover:bg-[#222] border border-[#00ff9980] text-white'}`}>
                 {lang === 'en' ? 'Contact Us' : 'اتصل بنا'}
               </button>
             </motion.div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Bottom CTA Banner */}
       <div className="py-20 relative overflow-hidden bg-[#00ff99] text-black">
@@ -410,13 +683,63 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            onClick={onLoginClick}
+            onClick={scrollToPricing}
             className="bg-black text-[#00ff99] hover:bg-white hover:text-black font-bold text-lg py-4 px-10 rounded-full transition-all shadow-[0_10px_20px_rgba(0,0,0,0.2)] hover:shadow-[0_10px_30px_rgba(0,0,0,0.3)] transform hover:-translate-y-1"
           >
             {lang === 'en' ? 'Start Your Free Trial' : 'ابدأ تجربتك المجانية'}
           </motion.button>
         </div>
       </div>
+
+      {/* Contact Modal */}
+      {showContactModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-[#050f0a] border border-[#00ff9930] rounded-2xl p-8 max-w-md w-full shadow-[0_0_50px_rgba(0,255,153,0.15)] relative overflow-hidden"
+          >
+            {/* Background glow */}
+            <div className="absolute -top-20 -right-20 w-40 h-40 bg-[#00ff99]/20 blur-[50px] rounded-full pointer-events-none" />
+            
+            <h3 className="text-2xl font-bold mb-2 text-center">
+              {lang === 'en' ? 'Get Started' : 'البدء الآن'}
+            </h3>
+            <p className="text-[#94a3b8] text-center mb-8">
+              {lang === 'en' ? `Contact us for getting the ${selectedPlanInfo} system.` : `تواصل معنا للحصول على نظام ${selectedPlanInfo}.`}
+            </p>
+            
+            <div className="flex flex-col gap-4">
+              <a 
+                href="https://wa.me/+9647754404099" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-3 w-full bg-[#25D366] hover:bg-[#20b858] text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-[#25D366]/30 transform hover:-translate-y-1"
+              >
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.347-.272.297-1.04 1.016-1.04 2.479 0 1.463 1.065 2.876 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                {lang === 'en' ? 'WhatsApp' : 'واتساب'}
+              </a>
+              <a 
+                href="https://www.instagram.com/_voidsystem" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-3 w-full bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F56040] hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-[#FD1D1D]/30 transform hover:-translate-y-1"
+              >
+                <Instagram className="w-6 h-6" />
+                {lang === 'en' ? 'Instagram' : 'انستغرام'}
+              </a>
+              
+              <button 
+                onClick={() => setShowContactModal(false)}
+                className="mt-4 w-full py-3 rounded-xl border border-[#333] hover:border-[#555] hover:bg-[#111] transition-colors text-[#94a3b8] font-medium"
+              >
+                {lang === 'en' ? 'Close' : 'إغلاق'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="bg-[#000a0a] py-12 text-center text-[#94a3b8] text-sm relative z-20">
@@ -425,6 +748,11 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
             VOID<span className="text-[#00ff99]">.</span>
           </div>
           <p>{lang === 'en' ? 'Empowering your command center.' : 'تمكين مركز القيادة الخاص بك.'}</p>
+        </div>
+        <div className="flex justify-center gap-6 mb-8">
+          <a href="https://www.instagram.com/_voidsystem?igsh=dzV1dWZ2aWc0ZTVh" target="_blank" rel="noopener noreferrer" className="text-[#94a3b8] hover:text-[#00ff99] transition-colors">
+            <Instagram className="w-6 h-6" />
+          </a>
         </div>
         <div>
           &copy; {new Date().getFullYear()} VOID. {lang === 'en' ? 'All rights reserved.' : 'جميع الحقوق محفوظة.'}
