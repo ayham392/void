@@ -4,7 +4,7 @@ import { translate } from './lib/i18n';
 import LandingPage from './LandingPage';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { MessageSquare, PackageOpen, Inbox } from 'lucide-react';
+import { MessageSquare, PackageOpen, Inbox, Menu, X } from 'lucide-react';
 
 type Lang = 'en' | 'ar';
 type Panel = 'home' | 'messages' | 'products' | 'calculator';
@@ -196,6 +196,7 @@ function formatCurrency(amount: number, currency: string) {
 function Dashboard({ client, lang, setLang, onLogout }: any) {
   const t = (key: string) => translate(key, lang);
   const [panel, setPanel] = useState<Panel>('home');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [stats, setStats] = useState({ msgs: 0, leads: 0, sales: 0 });
@@ -248,13 +249,33 @@ function Dashboard({ client, lang, setLang, onLogout }: any) {
           <NavBtn active={panel === 'products'} onClick={() => setPanel('products')} text={t('nav_prods')} badge={products.length} />
           <NavBtn active={panel === 'calculator'} onClick={() => setPanel('calculator')} text={t('nav_calc')} />
         </div>
-        <div className="topbar-right">
+        <div className="hidden md:flex items-center gap-2">
           <div className="live-indicator"><div className="live-dot"></div><span>{t('live')}</span></div>
           <div className="client-chip hidden md:block">{client?.client_name || '—'}</div>
           <button className="lang-btn" onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}><span>{lang === 'en' ? 'عربي' : 'English'}</span></button>
           <button className="btn btn-ghost btn-sm" onClick={onLogout}>{t('signout')}</button>
         </div>
+        <div className="md:hidden flex items-center gap-2">
+          <div className="live-indicator"><div className="live-dot"></div><span>{t('live')}</span></div>
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-white">
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
       </div>
+
+      {isMobileMenuOpen && (
+        <div className="md:hidden bg-[#030d06] border-b border-[#00ff9915] p-4 flex flex-col gap-4 relative z-40 shadow-xl">
+          <div className="flex items-center justify-between border-b border-[#00ff9910] pb-2">
+             <span className="text-gray-400 text-sm"> {client?.client_name || '—'} </span>
+          </div>
+          <button className="btn btn-ghost w-full justify-center whitespace-nowrap" onClick={() => { setLang(lang === 'en' ? 'ar' : 'en'); setIsMobileMenuOpen(false); }}>
+            {lang === 'en' ? 'عربي' : 'English'}
+          </button>
+          <button className="btn btn-ghost w-full justify-center text-red-400 hover:text-red-300" onClick={onLogout}>
+            {t('signout')}
+          </button>
+        </div>
+      )}
       
       {/* Mobile nav fallback */}
       <div className="flex md:hidden bg-[#030d06] border-b border-[#00ff9915] p-2 overflow-x-auto gap-2">
@@ -438,7 +459,7 @@ function HomePanel({ t, stats, products, messages, setPanel, lang, client }: any
             </div>
         </div>
         
-        <div className="glass2 p-5 flex flex-col h-[350px]">
+        <div className="glass2 overflow-hidden p-5 flex flex-col h-[350px]">
           <div className="text-2xl font-bold mb-4">{formatCurrency(totalRev, currency)}</div>
           <div className="flex-1 w-full min-h-0">
             <ResponsiveContainer width="100%" height="100%">
@@ -458,7 +479,7 @@ function HomePanel({ t, stats, products, messages, setPanel, lang, client }: any
       </div>
 
       <div className="charts-grid grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5 mt-5">
-        <div className="glass2 p-5 flex flex-col h-[300px]">
+        <div className="glass2 overflow-hidden min-w-0 p-5 flex flex-col h-[300px]">
           <div className="flex justify-between items-center mb-4">
             <div className="section-head-title text-sm font-semibold text-[color:var(--text-dim)] uppercase tracking-wider">{t('chart_msgs')}</div>
             <div className="flex bg-[color:var(--bg-card)] rounded-md p-1 border border-[color:var(--border)] overflow-x-auto hide-scrollbar">
@@ -485,7 +506,7 @@ function HomePanel({ t, stats, products, messages, setPanel, lang, client }: any
             </ResponsiveContainer>
           </div>
         </div>
-        <div className="glass2 p-5 flex flex-col h-[300px]">
+        <div className="glass2 overflow-hidden min-w-0 p-5 flex flex-col h-[300px]">
           <div className="flex justify-between items-center mb-4">
             <div className="section-head-title text-sm font-semibold text-[color:var(--text-dim)] uppercase tracking-wider">{t('chart_sales')}</div>
             <div className="flex bg-[color:var(--bg-card)] rounded-md p-1 border border-[color:var(--border)] overflow-x-auto hide-scrollbar">
@@ -643,6 +664,71 @@ function ProductsPanel({ t, products, client, lang }: any) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('date_desc');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split('\n').filter(line => line.trim() !== '');
+      if (lines.length <= 1) {
+        showToast(lang === 'ar' ? 'ملف CSV فارغ' : 'Empty CSV file', 'err');
+        return;
+      }
+
+      const parseCSVLine = (line: string) => {
+        const result = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          if (line[i] === '"' && line[i+1] === '"') {
+            cur += '"';
+            i++; 
+          } else if (line[i] === '"') {
+            inQuotes = !inQuotes;
+          } else if (line[i] === ',' && !inQuotes) {
+            result.push(cur);
+            cur = '';
+          } else {
+            cur += line[i];
+          }
+        }
+        result.push(cur.trim());
+        return result;
+      };
+      
+      const newProducts = lines.slice(1).map(line => {
+        const row = parseCSVLine(line);
+        // Map from: ID,Name,Price,Currency,Quantity,Status,Description,CreatedAt
+        return {
+          name: row[1] || 'Untitled',
+          price: parseFloat(row[2]) || 0,
+          currency: row[3] || 'IQD',
+          quantity: row[4] ? parseInt(row[4]) : null,
+          is_active: row[5] === 'Active',
+          description: row[6] || null,
+          client_id: client.id
+        };
+      }).filter(p => !!p.name);
+      
+      if (newProducts.length > 0) {
+        const { error } = await supabase.from('products').insert(newProducts);
+        if (error) {
+          setErr(error.message);
+          showToast(lang === 'ar' ? 'فشل الاستيراد' : 'Import failed', 'err');
+        } else {
+          showToast(lang === 'ar' ? 'تم الاستيراد بنجاح' : 'Import successful');
+        }
+      }
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+    }
+  };
 
   const submitProduct = async () => {
     setErr('');
@@ -733,7 +819,17 @@ function ProductsPanel({ t, products, client, lang }: any) {
           <div className="page-sub">{t('prods_sub')}</div>
         </div>
         <div className="w-full md:w-auto flex flex-col sm:flex-row gap-2">
-          <button onClick={exportData} className="btn bg-[color:var(--bg-card)] border border-[color:var(--border)] text-[color:var(--text)] hover:bg-[color:var(--border)] px-4 py-2 rounded-md transition-colors whitespace-nowrap">
+          <input 
+            type="file" 
+            accept=".csv" 
+            ref={fileInputRef} 
+            onChange={handleImportCSV} 
+            style={{ display: 'none' }} 
+          />
+          <button onClick={() => fileInputRef.current?.click()} className="btn btn-ghost w-full sm:w-auto justify-center whitespace-nowrap text-xs md:text-[13px] px-3 py-1.5 md:px-4 md:py-2">
+            {lang === 'ar' ? 'استيراد CSV' : 'Import CSV'}
+          </button>
+          <button onClick={exportData} className="btn btn-ghost w-full sm:w-auto justify-center whitespace-nowrap text-xs md:text-[13px] px-3 py-1.5 md:px-4 md:py-2">
             {lang === 'ar' ? 'تصدير CSV' : 'Export CSV'}
           </button>
           <input 
