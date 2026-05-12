@@ -243,7 +243,7 @@ function Dashboard({ client, lang, setLang, onLogout }: any) {
     <div id="app">
       <div id="topbar">
         <div className="topbar-brand">{t('brand')}</div>
-        <div className="topbar-center hidden md:flex">
+        <div className="hidden md:flex items-center gap-1">
           <NavBtn active={panel === 'home'} onClick={() => setPanel('home')} text={t('nav_home')} />
           <NavBtn active={panel === 'messages'} onClick={() => setPanel('messages')} text={t('nav_msgs')} badge={messages.length} />
           <NavBtn active={panel === 'products'} onClick={() => setPanel('products')} text={t('nav_prods')} badge={products.length} />

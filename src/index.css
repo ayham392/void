@@ -419,6 +419,21 @@ select.inp { cursor: pointer; }
   display: flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  #topbar {
+    padding: 0 8px;
+  }
+  .topbar-brand {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    gap: 4px;
+  }
+  .topbar-brand::before {
+    width: 5px; height: 5px;
+  }
 }
 
 .topbar-brand::before {
@@ -428,12 +443,6 @@ select.inp { cursor: pointer; }
   border-radius: 50%;
   box-shadow: var(--neon-glow);
   animation: pulse 2.5s infinite;
-}
-
-.topbar-center {
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 
 .nav-btn {
@@ -462,12 +471,6 @@ select.inp { cursor: pointer; }
   border-color: rgba(57,255,20,0.35);
   background: rgba(57,255,20,0.06);
   text-shadow: 0 0 6px rgba(57,255,20,0.3);
-}
-
-.topbar-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 
 .live-indicator {
