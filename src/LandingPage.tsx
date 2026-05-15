@@ -44,7 +44,7 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
     }
   };
 
-  const itemVariants = {
+  const itemVariants: any = {
     hidden: { opacity: 0, y: 30 },
     visible: { 
       opacity: 1, 
@@ -53,7 +53,7 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
     }
   };
 
-  const pricingCardVariants = {
+  const pricingCardVariants: any = {
     hidden: { opacity: 0, y: 60, scale: 0.95 },
     visible: { 
       opacity: 1, 
@@ -66,46 +66,41 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
   return (
     <div className="min-h-screen bg-[#000a0a] text-[#f8fafc] font-sans selection:bg-[#00ff99] selection:text-black">
       {/* Navigation */}
-      <nav className="border-b border-[#00ff9920] bg-[#000a0a]/60 backdrop-blur-xl sticky top-0 z-50 shadow-[0_4px_30px_rgba(0,255,153,0.05)] transition-all duration-300">
+      <nav className="absolute top-0 w-full z-50 pt-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
               <div 
-                className="text-xl font-bold tracking-widest text-[#f8fafc] cursor-pointer"
+                className="text-lg md:text-xl font-bold tracking-widest text-[#f8fafc] cursor-pointer"
                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               >
-                VOID<span className="text-[#00ff99]">.</span>
+                <span className="text-[#00ff99]">V</span>OID SYSTEMS
               </div>
             </div>
-            <div className="hidden md:flex items-center gap-8">
-              <a href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-sm font-medium text-[#94a3b8] hover:text-[#00ff99] transition-colors">
-                {lang === 'en' ? 'Home' : 'الرئيسية'}
-              </a>
-              <a href="#features" className="text-sm font-medium text-[#94a3b8] hover:text-[#00ff99] transition-colors">
-                {lang === 'en' ? 'What We Offer' : 'ماذا نقدم'}
-              </a>
-              <a href="#pricing" className="text-sm font-medium text-[#94a3b8] hover:text-[#00ff99] transition-colors">
+            <div className="hidden lg:flex items-center gap-8">
+              <a href="#pricing" className="text-[10px] md:text-xs font-semibold text-[#94a3b8] hover:text-white transition-colors uppercase tracking-widest">
                 {lang === 'en' ? 'Pricing' : 'الأسعار'}
+              </a>
+              <a href="#features" className="text-[10px] md:text-xs font-semibold text-[#94a3b8] hover:text-white transition-colors uppercase tracking-widest">
+                {lang === 'en' ? 'Features' : 'الميزات'}
+              </a>
+              <a href="#social" className="text-[10px] md:text-xs font-semibold text-[#94a3b8] hover:text-white transition-colors uppercase tracking-widest">
+                {lang === 'en' ? 'Social' : 'المنصات'}
               </a>
             </div>
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}
-                className="text-sm font-medium text-[#94a3b8] hover:text-[#f8fafc] transition-colors"
+                className="flex items-center gap-2 text-xs font-medium text-[#94a3b8] border border-[#333] hover:border-[#555] bg-[#000a0a]/50 transition-colors px-4 py-1.5 rounded-full"
               >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 {lang === 'en' ? 'عربي' : 'English'}
               </button>
               <button 
                 onClick={onLoginClick}
-                className="text-sm font-semibold text-[#f8fafc] hover:text-[#00ff99] transition-colors py-2 px-3"
+                className="text-xs font-bold text-black bg-[#00ff99] hover:bg-[#00cc7a] transition-colors px-5 py-1.5 rounded-full uppercase tracking-widest shadow-[0_0_15px_rgba(0,255,153,0.3)]"
               >
-                {lang === 'en' ? 'Login' : 'تسجيل الدخول'}
-              </button>
-              <button 
-                onClick={scrollToPricing}
-                className="bg-[#00ff99] hover:bg-[#00cc7a] text-black text-sm font-semibold py-2 px-5 rounded-md transition-colors shadow-[0_0_15px_rgba(0,255,153,0.3)]"
-              >
-                {lang === 'en' ? 'Get Started' : 'ابدأ الآن'}
+                {lang === 'en' ? 'Log in' : 'دخول'}
               </button>
             </div>
           </div>
@@ -113,59 +108,45 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
       </nav>
 
       {/* Hero Section */}
-      <div className="relative overflow-hidden pt-32 pb-24 border-b border-[#00ff99]/10">
-        {/* Background Video & Overlays */}
-        <div className="absolute inset-0 w-full h-full pointer-events-none bg-[#000a0a]">
-          <video 
-            autoPlay 
-            loop 
-            muted 
-            playsInline 
-            className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-screen scale-105"
-          >
-            <source src="https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4" type="video/mp4" />
-          </video>
-          {/* Subtle Grid Overlay */}
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#00ff9910_1px,transparent_1px),linear-gradient(to_bottom,#00ff9910_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
-          
-          {/* Gradients to improve text readability */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#000a0a] via-[#000a0a]/60 to-[#000a0a]/20" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#000a0a] via-transparent to-[#000a0a]" />
-          
-          {/* Soft neon glow behind the main text */}
-          <div className="absolute top-[30%] left-1/2 -translate-x-1/2 w-[600px] sm:w-[800px] h-[500px] sm:h-[600px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#00ff99]/20 via-[#00ff99]/5 to-transparent rounded-full blur-[100px] pointer-events-none mix-blend-screen animate-pulse duration-1000"></div>
+      <div className="relative overflow-hidden pt-40 pb-24 border-b border-transparent">
+        {/* Background Overlays */}
+        <div className="absolute inset-0 w-full h-full pointer-events-none bg-[#020b06]">
+          <div className="absolute top-[20%] right-[10%] w-[800px] h-[800px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#00ff99]/5 to-transparent rounded-full blur-[120px] pointer-events-none mix-blend-screen"></div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center mt-[-45px]">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
-            className="mb-8 inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-[#00ff99]/30 bg-[#000a0a]/60 backdrop-blur-md text-[#00ff99] text-sm font-medium shadow-[0_0_20px_rgba(0,255,153,0.15)]"
+            className="mb-8 inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00ff99]/20 bg-[#000a0a]/50 backdrop-blur-md text-[#00ff99] text-[10px] md:text-xs font-bold tracking-widest uppercase shadow-[0_0_20px_rgba(0,255,153,0.1)]"
           >
             <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ff99] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#00ff99]"></span>
             </span>
-            {lang === 'en' ? 'Void System v2.0 is Live' : 'نظام ڤويد 2.0 متاح الآن'}
+            {lang === 'en' ? 'AI AUTOMATION FOR YOU' : 'أتمتة الذكاء الاصطناعي لك'}
           </motion.div>
           <motion.h1 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="text-4xl md:text-7xl font-extrabold tracking-tight mb-6 text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]"
+            className="text-6xl md:text-8xl lg:text-9xl font-black mb-6 text-white leading-tight drop-shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
           >
-            {lang === 'en' ? 'Your AI Command Center' : 'مركز القيادة بالذكاء الاصطناعي'}
+            {lang === 'en' ? (
+              <>Your DM's on<br/><span className="text-[#00ff99] font-serif font-medium tracking-tight">Autopilot</span></>
+            ) : (
+              <>رسائلك الخاصة على<br/><span className="text-[#00ff99] font-serif font-medium tracking-tight">الطيار الآلي</span></>
+            )}
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-base md:text-2xl text-[#cbd5e1] max-w-3xl mx-auto mb-10 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] leading-relaxed font-medium"
+            className="text-lg md:text-xl text-[#94a3b8] max-w-2xl mx-auto mb-12 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] leading-relaxed"
           >
             {lang === 'en' 
-              ? 'Manage messages, track leads, and boost your sales with our state-of-the-art AI-powered platform.' 
-              : 'قم بإدارة الرسائل وتتبع العملاء المحتملين وزيادة مبيعاتك من خلال منصتنا المتطورة بالذكاء الاصطناعي.'}
+              ? 'Void Systems transforms your business Instagram presence with intelligent agents that reply, sell, and support 24/7.' 
+              : 'نظام ڤويد يحول تواجدك التجاري على إنستغرام مع وكلاء أذكياء يردون، يبيعون، ويدعمون على مدار الساعة.'}
           </motion.p>
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
@@ -175,14 +156,20 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
           >
             <button 
               onClick={scrollToPricing}
-              className="bg-[#00ff99] hover:bg-[#00cc7a] text-black text-base md:text-lg font-bold py-3 md:py-4 px-8 md:px-10 rounded-full transition-all shadow-[0_0_20px_rgba(0,255,153,0.4)] hover:shadow-[0_0_30px_rgba(0,255,153,0.6)] flex items-center gap-2 transform hover:-translate-y-1"
+              className="bg-white hover:bg-gray-200 text-black text-xs md:text-sm font-bold py-3 md:py-4 px-8 md:px-10 rounded-full transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
             >
-              {lang === 'en' ? 'Get Started' : 'ابدأ الآن'}
-              <ArrowRight className="w-5 h-5" />
+              {lang === 'en' ? 'Launch Agent' : 'إطلاق الوكيل'}
             </button>
-            <a href="#features" className="bg-[#050f0a]/80 hover:bg-[#000a0a] border border-[#00ff99]/30 hover:border-[#00ff99]/60 text-[#f8fafc] text-base md:text-lg font-bold py-3 md:py-4 px-8 md:px-10 rounded-full transition-all flex items-center shadow-[0_4px_20px_rgba(0,0,0,0.4)] backdrop-blur-md transform hover:-translate-y-1">
-              {lang === 'en' ? 'Learn More' : 'اعرف المزيد'}
-            </a>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1, delay: 1 }}
+            className="mt-16 text-[#333]"
+          >
+            <svg className="w-8 h-8 animate-bounce mx-auto cursor-pointer hover:text-[#00ff99] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" onClick={scrollToPricing}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
           </motion.div>
         </div>
       </div>
@@ -358,7 +345,7 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
 
       <motion.div 
         id="features" 
-        className="py-24 bg-[#030d06]"
+        className="py-24 bg-[#030d06] mt-[-99px]"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.2 }}
@@ -377,7 +364,7 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
               className="bg-[#0a1410] border border-[#00ff9915] p-5 md:p-8 rounded-xl hover:border-[#00ff9940] hover:shadow-[0_0_30px_rgba(0,255,153,0.1)] transition-all duration-300 transform hover:-translate-y-2 cursor-pointer"
             >
               <motion.div 
-                variants={{ hover: { scale: 1.15, rotate: [0, -10, 10, -5, 5, 0], transition: { duration: 0.6 } } }}
+                variants={{ hover: { scale: 1.15, rotate: [0, -10, 10, -5, 5, 0], transition: { duration: 0.6 } } } as any}
                 className="w-12 h-12 bg-[#00ff99]/10 rounded-lg flex items-center justify-center mb-6 origin-center"
               >
                 <MessageCircle className="w-6 h-6 text-[#00ff99]" />
@@ -394,7 +381,7 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
               className="bg-[#0a1410] border border-[#00ff9915] p-5 md:p-8 rounded-xl hover:border-[#00ff9940] hover:shadow-[0_0_30px_rgba(0,255,153,0.1)] transition-all duration-300 transform hover:-translate-y-2 cursor-pointer"
             >
               <motion.div 
-                variants={{ hover: { scale: 1.15, y: -5, transition: { duration: 0.3, yoyo: Infinity } } }}
+                variants={{ hover: { scale: 1.15, y: -5, transition: { duration: 0.3, repeat: Infinity, repeatType: "reverse" } } } as any}
                 className="w-12 h-12 bg-[#00ff99]/10 rounded-lg flex items-center justify-center mb-6"
               >
                 <svg className="w-6 h-6 text-[#00ff99]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -413,7 +400,7 @@ export default function LandingPage({ lang, setLang, onLoginClick }: LandingPage
               className="bg-[#0a1410] border border-[#00ff9915] p-5 md:p-8 rounded-xl hover:border-[#00ff9940] hover:shadow-[0_0_30px_rgba(0,255,153,0.1)] transition-all duration-300 transform hover:-translate-y-2 cursor-pointer"
             >
               <motion.div 
-                 variants={{ hover: { scale: 1.15, rotate: 180, transition: { duration: 0.5 } } }}
+                 variants={{ hover: { scale: 1.15, rotate: 180, transition: { duration: 0.5 } } } as any}
                  className="w-12 h-12 bg-[#00ff99]/10 rounded-lg flex items-center justify-center mb-6 origin-center"
               >
                 <Store className="w-6 h-6 text-[#00ff99]" />

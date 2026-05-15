@@ -3,11 +3,13 @@ import { supabase } from './lib/supabase';
 import { translate } from './lib/i18n';
 import LandingPage from './LandingPage';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
+import Markdown from 'react-markdown';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { MessageSquare, PackageOpen, Inbox, Menu, X } from 'lucide-react';
+import { MessageSquare, PackageOpen, Inbox, Menu, X, Sun, Moon, Bold, Italic, List, Heading1, Heading2, Quote, Code } from 'lucide-react';
+import { Toaster, toast } from 'sonner';
 
 type Lang = 'en' | 'ar';
-type Panel = 'home' | 'messages' | 'products' | 'calculator';
+type Panel = 'home' | 'messages' | 'products' | 'calculator' | 'orders';
 
 // --- Shared Hooks & Helpers ---
 function useCountUp(target: number) {
@@ -29,8 +31,13 @@ function AppContent() {
   const [session, setSession] = useState<any>(null);
   const [client, setClient] = useState<any>(null);
   const [lang, setLang] = useState<Lang>('en');
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [loadingApp, setLoadingApp] = useState(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -73,8 +80,10 @@ function AppContent() {
 
   async function fetchClient(userId: string) {
     // In a real DB, normally you match user.id, but since you had select().single(), I am keeping that behavior
-    const { data } = await supabase.from('clients').select('*').single();
-    if (data) {
+    const { data, error } = await supabase.from('clients').select('*').single();
+    if (error) {
+      toast.error(error.message);
+    } else if (data) {
       setClient(data);
     }
     setLoadingApp(false);
@@ -93,12 +102,12 @@ function AppContent() {
         } />
         <Route path="/dashboard" element={
           (session && client) ? 
-            <Dashboard client={client} lang={lang} setLang={setLang} onLogout={() => { supabase.auth.signOut(); navigate('/'); }} /> : 
+            <Dashboard client={client} lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} onLogout={() => { supabase.auth.signOut(); navigate('/'); }} /> : 
             <Navigate to="/login" replace />
         } />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <div id="toast" className="toast"></div>
+      <Toaster theme={theme} position="bottom-right" />
     </>
   );
 }
@@ -116,15 +125,38 @@ function Login({ setSession, lang, onBack }: { setSession: any, lang: Lang, onBa
   const t = (key: string) => translate(key, lang);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('void_remembered_email');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+      toast.error(lang === 'ar' ? 'الرجاء إدخال البريد الإلكتروني وكلمة المرور' : 'Please enter email and password');
+      return;
+    }
+    
     setLoading(true);
-    setError('');
+
+    if (rememberMe) {
+      localStorage.setItem('void_remembered_email', email);
+    } else {
+      localStorage.removeItem('void_remembered_email');
+    }
+
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setError(error.message);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success(lang === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Successfully logged in');
+    }
     setLoading(false);
   };
 
@@ -159,10 +191,18 @@ function Login({ setSession, lang, onBack }: { setSession: any, lang: Lang, onBa
               <label>{t('pass_lbl')}</label>
               <input className="inp text-center" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
             </div>
+            
+            <div className="flex items-center justify-between mb-6 text-sm">
+              <label className="flex items-center gap-2 cursor-pointer text-gray-400 hover:text-[color:var(--text)]">
+                <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="rounded border-gray-600 bg-gray-800 text-[#00ff99] focus:ring-[#00ff99] focus:ring-offset-gray-900" />
+                <span>{t('remember')}</span>
+              </label>
+              <a href="#" className="text-[color:var(--neon)] hover:underline" onClick={(e) => { e.preventDefault(); alert(t('forgot_action')) }}>{t('forgot')}</a>
+            </div>
+
             <button type="submit" className="btn btn-neon btn-block" disabled={loading}>
               <span>{loading ? '...' : t('signin_btn')}</span>
             </button>
-            {error && <div id="login-error" style={{ display: 'block' }}>{error}</div>}
           </form>
         </div>
 
@@ -193,7 +233,7 @@ function formatCurrency(amount: number, currency: string) {
   return parts.map(part => part.type === 'currency' ? `${part.value} ` : part.value).join('').replace(/ \s/g, ' ').trim();
 }
 
-function Dashboard({ client, lang, setLang, onLogout }: any) {
+function Dashboard({ client, lang, setLang, theme, setTheme, onLogout }: any) {
   const t = (key: string) => translate(key, lang);
   const [panel, setPanel] = useState<Panel>('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -206,21 +246,32 @@ function Dashboard({ client, lang, setLang, onLogout }: any) {
     if (!client) return;
 
     const loadData = async () => {
-      // Products
-      const { data: prodData } = await supabase.from('products').select('*').order('created_at', { ascending: false });
-      setProducts(prodData || []);
+      try {
+        // Products
+        const { data: prodData, error: prodErr } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+        if (prodErr) toast.error(prodErr.message);
+        setProducts(prodData || []);
 
-      // Messages
-      const { data: msgData } = await supabase.from('interaction_log').select('*').eq('client_id', client.id).order('timestamp', { ascending: false }).limit(80);
-      setMessages(msgData || []);
+        // Messages
+        const { data: msgData, error: msgErr } = await supabase.from('interaction_log').select('*').eq('client_id', client.id).order('timestamp', { ascending: false }).limit(80);
+        if (msgErr) toast.error(msgErr.message);
+        setMessages(msgData || []);
 
-      // Stats
-      const [m, l, s] = await Promise.all([
-        supabase.from('interaction_log').select('id', { count: 'exact', head: true }).eq('client_id', client.id),
-        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('instagram_id', client.instagram_page_id),
-        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('instagram_id', client.instagram_page_id).eq('payment_status', 'paid')
-      ]);
-      setStats({ msgs: m.count || 0, leads: l.count || 0, sales: s.count || 0 });
+        // Stats
+        const [m, l, s] = await Promise.all([
+          supabase.from('interaction_log').select('id', { count: 'exact', head: true }).eq('client_id', client.id),
+          supabase.from('leads').select('id', { count: 'exact', head: true }).eq('instagram_id', client.instagram_page_id),
+          supabase.from('leads').select('id', { count: 'exact', head: true }).eq('instagram_id', client.instagram_page_id).eq('payment_status', 'paid')
+        ]);
+        
+        if (m.error) toast.error(m.error.message);
+        if (l.error) toast.error(l.error.message);
+        if (s.error) toast.error(s.error.message);
+
+        setStats({ msgs: m.count || 0, leads: l.count || 0, sales: s.count || 0 });
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to load dashboard data');
+      }
     };
 
     loadData();
@@ -231,8 +282,9 @@ function Dashboard({ client, lang, setLang, onLogout }: any) {
         setStats(s => ({ ...s, msgs: s.msgs + 1 }));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `client_id=eq.${client.id}` }, async () => {
-        const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false });
-        setProducts(data || []);
+        const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+        if (error) toast.error(error.message);
+        else setProducts(data || []);
       })
       .subscribe();
 
@@ -246,27 +298,34 @@ function Dashboard({ client, lang, setLang, onLogout }: any) {
         <div className="hidden md:flex items-center gap-1">
           <NavBtn active={panel === 'home'} onClick={() => setPanel('home')} text={t('nav_home')} />
           <NavBtn active={panel === 'messages'} onClick={() => setPanel('messages')} text={t('nav_msgs')} badge={messages.length} />
+          <NavBtn active={panel === 'orders'} onClick={() => setPanel('orders')} text={t('nav_orders')} />
           <NavBtn active={panel === 'products'} onClick={() => setPanel('products')} text={t('nav_prods')} badge={products.length} />
           <NavBtn active={panel === 'calculator'} onClick={() => setPanel('calculator')} text={t('nav_calc')} />
         </div>
         <div className="hidden md:flex items-center gap-2">
           <div className="live-indicator"><div className="live-dot"></div><span>{t('live')}</span></div>
           <div className="client-chip hidden md:block">{client?.client_name || '—'}</div>
+          <button className="p-2 text-[color:var(--text-dim)] hover:text-[color:var(--text)]" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
           <button className="lang-btn" onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}><span>{lang === 'en' ? 'عربي' : 'English'}</span></button>
           <button className="btn btn-ghost btn-sm" onClick={onLogout}>{t('signout')}</button>
         </div>
         <div className="md:hidden flex items-center gap-2">
           <div className="live-indicator"><div className="live-dot"></div><span>{t('live')}</span></div>
-          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-white">
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-[color:var(--text)]">
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
       </div>
 
-      {isMobileMenuOpen && (
-        <div className="md:hidden bg-[#030d06] border-b border-[#00ff9915] p-4 flex flex-col gap-4 relative z-40 shadow-xl">
-          <div className="flex items-center justify-between border-b border-[#00ff9910] pb-2">
-             <span className="text-gray-400 text-sm"> {client?.client_name || '—'} </span>
+       {isMobileMenuOpen && (
+        <div className="md:hidden bg-[color:var(--topbar-bg)] border-b border-[color:var(--border)] p-4 flex flex-col gap-4 relative z-40 shadow-xl">
+          <div className="flex items-center justify-between border-b border-[color:var(--border)] pb-2">
+             <span className="text-[color:var(--text-dim)] text-sm"> {client?.client_name || '—'} </span>
+             <button className="p-2 text-[color:var(--text-dim)] hover:text-[color:var(--text)]" onClick={() => { setTheme(theme === 'dark' ? 'light' : 'dark'); setIsMobileMenuOpen(false); }}>
+               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+             </button>
           </div>
           <button className="btn btn-ghost w-full justify-center whitespace-nowrap" onClick={() => { setLang(lang === 'en' ? 'ar' : 'en'); setIsMobileMenuOpen(false); }}>
             {lang === 'en' ? 'عربي' : 'English'}
@@ -278,9 +337,10 @@ function Dashboard({ client, lang, setLang, onLogout }: any) {
       )}
       
       {/* Mobile nav fallback */}
-      <div className="flex md:hidden bg-[#030d06] border-b border-[#00ff9915] p-2 overflow-x-auto gap-2">
+      <div className="flex md:hidden bg-[color:var(--topbar-bg)] border-b border-[color:var(--border)] p-2 overflow-x-auto gap-2">
          <NavBtn active={panel === 'home'} onClick={() => setPanel('home')} text={t('nav_home')} />
          <NavBtn active={panel === 'messages'} onClick={() => setPanel('messages')} text={t('nav_msgs')} />
+         <NavBtn active={panel === 'orders'} onClick={() => setPanel('orders')} text={t('nav_orders')} />
          <NavBtn active={panel === 'products'} onClick={() => setPanel('products')} text={t('nav_prods')} />
          <NavBtn active={panel === 'calculator'} onClick={() => setPanel('calculator')} text={t('nav_calc')} />
       </div>
@@ -288,6 +348,7 @@ function Dashboard({ client, lang, setLang, onLogout }: any) {
       <div className="flex-1">
         {panel === 'home' && <HomePanel t={t} stats={stats} products={products} messages={messages} setPanel={setPanel} lang={lang} client={client} />}
         {panel === 'messages' && <MessagesPanel t={t} messages={messages} lang={lang} />}
+        {panel === 'orders' && <OrdersPanel t={t} client={client} lang={lang} />}
         {panel === 'products' && <ProductsPanel t={t} products={products} client={client} lang={lang} />}
         {panel === 'calculator' && <CalculatorPanel t={t} />}
       </div>
@@ -656,15 +717,92 @@ function MessagesPanel({ t, messages, lang }: any) {
   );
 }
 
+function parseProductData(desc: string | null) {
+  let cleanDesc = desc || '';
+  let variants = [];
+  let customAttr = [];
+  
+  if (cleanDesc) {
+    const varMatch = cleanDesc.match(/<!-- variants: (.*?) -->/);
+    if (varMatch) {
+      try {
+        variants = JSON.parse(varMatch[1]);
+        cleanDesc = cleanDesc.replace(varMatch[0], '').trim();
+      } catch(e) {}
+    }
+    
+    const attrMatch = cleanDesc.match(/<!-- custom_attr: (.*?) -->/);
+    if (attrMatch) {
+      try {
+        customAttr = JSON.parse(attrMatch[1]);
+        cleanDesc = cleanDesc.replace(attrMatch[0], '').trim();
+      } catch(e) {}
+    }
+  }
+  
+  return { desc: cleanDesc, variants, customAttr };
+}
+
 // --- Products Panel ---
 function ProductsPanel({ t, products, client, lang }: any) {
   const [editingId, setEditingId] = useState('');
-  const [form, setForm] = useState({ name: '', price: '', currency: 'IQD', qty: '', desc: '' });
-  const [err, setErr] = useState('');
+  const [form, setForm] = useState({ name: '', price: '', currency: 'IQD', qty: '', desc: '', variants: [] as any[], customAttr: [] as any[]});
+  const [errors, setErrors] = useState<{name?: string, price?: string, qty?: string, variants?: any[]}>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('date_desc');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showBulkPriceModal, setShowBulkPriceModal] = useState(false);
+  const [bulkPriceChange, setBulkPriceChange] = useState({ amount: '', type: 'fixed' as 'fixed' | 'increase' | 'decrease' });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const descRef = React.useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const newErrors: any = {};
+    if (form.name !== '' && !form.name.trim()) newErrors.name = lang === 'ar' ? 'اسم المنتج مطلوب' : 'Product name is required';
+    
+    if (form.price !== '' && isNaN(Number(form.price))) {
+      newErrors.price = lang === 'ar' ? 'يجب أن يكون السعر رقماً' : 'Price must be a number';
+    } else if (form.price !== '' && Number(form.price) < 0) {
+      newErrors.price = lang === 'ar' ? 'يجب أن يكون السعر موجباً' : 'Price must be positive';
+    }
+
+    if (form.qty !== '' && (isNaN(Number(form.qty)) || Number(form.qty) < 0 || !Number.isInteger(Number(form.qty)))) {
+      newErrors.qty = lang === 'ar' ? 'يجب أن تكون الكمية رقماً صحيحاً صالحاً' : 'Quantity must be a valid integer';
+    }
+
+    const varErrs: any[] = [];
+    let hasVarErr = false;
+    form.variants.forEach((v) => {
+      const verr: any = {};
+      if (v.name !== '' && !v.name.trim()) verr.name = lang === 'ar' ? 'مطلوب' : 'Required';
+      if (v.price !== '' && (isNaN(Number(v.price)) || Number(v.price) < 0)) verr.price = lang === 'ar' ? 'غير صالح' : 'Invalid';
+      if (v.qty !== '' && (isNaN(Number(v.qty)) || Number(v.qty) < 0 || !Number.isInteger(Number(v.qty)))) verr.qty = lang === 'ar' ? 'غير صالح' : 'Invalid';
+      varErrs.push(verr);
+      if (Object.keys(verr).length > 0) hasVarErr = true;
+    });
+    if (hasVarErr) newErrors.variants = varErrs;
+
+    setErrors(newErrors);
+  }, [form, lang]);
+
+  const applyFormatting = (prefix: string, suffix: string = '') => {
+    if (!descRef.current) return;
+    const start = descRef.current.selectionStart;
+    const end = descRef.current.selectionEnd;
+    const text = form.desc;
+    const selected = text.substring(start, end);
+    const newText = text.substring(0, start) + prefix + selected + suffix + text.substring(end);
+    setForm({ ...form, desc: newText });
+    
+    // setTimeout to allow React to update the value before selecting
+    setTimeout(() => {
+      if (descRef.current) {
+        descRef.current.focus();
+        descRef.current.setSelectionRange(start + prefix.length, end + prefix.length);
+      }
+    }, 0);
+  };
 
   const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -675,7 +813,7 @@ function ProductsPanel({ t, products, client, lang }: any) {
       const text = event.target?.result as string;
       const lines = text.split('\n').filter(line => line.trim() !== '');
       if (lines.length <= 1) {
-        showToast(lang === 'ar' ? 'ملف CSV فارغ' : 'Empty CSV file', 'err');
+        toast.error(lang === 'ar' ? 'ملف CSV فارغ' : 'Empty CSV file');
         return;
       }
 
@@ -700,16 +838,42 @@ function ProductsPanel({ t, products, client, lang }: any) {
         return result;
       };
       
+      const rawHeaders = parseCSVLine(lines[0]);
+      const headers = rawHeaders.map(h => h.trim().toLowerCase());
+      
       const newProducts = lines.slice(1).map(line => {
         const row = parseCSVLine(line);
-        // Map from: ID,Name,Price,Currency,Quantity,Status,Description,CreatedAt
+        let name = 'Untitled', price = 0, currency = 'IQD', quantity = null, is_active = true, description = '';
+        let customAttr: any[] = [];
+        
+        headers.forEach((h, idx) => {
+          const val = row[idx] || '';
+          if (h === 'name') name = val;
+          else if (h === 'price') price = parseFloat(val) || 0;
+          else if (h === 'currency') currency = val;
+          else if (h === 'quantity') quantity = val ? parseInt(val) : null;
+          else if (h === 'status') is_active = val.toLowerCase() === 'active';
+          else if (h === 'description') description = val;
+          else if (h !== 'id' && h !== 'created at' && h !== 'created_at' && h !== '') {
+            customAttr.push({ k: rawHeaders[idx].trim(), v: val });
+          }
+        });
+        
+        // Ensure name is populated (fallback if standard columns like index 1 was mapped instead)
+        if (name === 'Untitled' && row[1] && headers[1] !== 'name') name = row[1];
+        
+        let finalDesc = description;
+        if (customAttr.length > 0) {
+          finalDesc = `${finalDesc}\n\n<!-- custom_attr: ${JSON.stringify(customAttr)} -->`.trim();
+        }
+        
         return {
-          name: row[1] || 'Untitled',
-          price: parseFloat(row[2]) || 0,
-          currency: row[3] || 'IQD',
-          quantity: row[4] ? parseInt(row[4]) : null,
-          is_active: row[5] === 'Active',
-          description: row[6] || null,
+          name: name,
+          price: price,
+          currency: currency,
+          quantity: quantity,
+          is_active: is_active,
+          description: finalDesc || null,
           client_id: client.id
         };
       }).filter(p => !!p.name);
@@ -717,10 +881,9 @@ function ProductsPanel({ t, products, client, lang }: any) {
       if (newProducts.length > 0) {
         const { error } = await supabase.from('products').insert(newProducts);
         if (error) {
-          setErr(error.message);
-          showToast(lang === 'ar' ? 'فشل الاستيراد' : 'Import failed', 'err');
+          toast.error(error.message);
         } else {
-          showToast(lang === 'ar' ? 'تم الاستيراد بنجاح' : 'Import successful');
+          toast.success(lang === 'ar' ? 'تم الاستيراد بنجاح' : 'Import successful');
         }
       }
     };
@@ -731,41 +894,110 @@ function ProductsPanel({ t, products, client, lang }: any) {
   };
 
   const submitProduct = async () => {
-    setErr('');
-    if (!form.name.trim()) return setErr(lang === 'ar' ? 'اسم المنتج مطلوب' : 'Product name is required.');
+    if (Object.keys(errors).length > 0) {
+      return toast.error(lang === 'ar' ? 'يرجى إصلاح أخطاء النموذج قبل الحفظ' : 'Please fix form errors before saving.');
+    }
+    if (!form.name.trim()) return toast.error(lang === 'ar' ? 'اسم المنتج مطلوب' : 'Product name is required.');
+    
+    // Encode variants and custom properties into description
+    let finalDesc = form.desc.trim() || '';
+    const cleanVariants = form.variants.filter(v => v.name.trim() !== '');
+    if (cleanVariants.length > 0) {
+      finalDesc = `${finalDesc}\n\n<!-- variants: ${JSON.stringify(cleanVariants)} -->`.trim();
+    }
+    const cleanAttr = form.customAttr.filter(a => a.k.trim() !== '');
+    if (cleanAttr.length > 0) {
+      finalDesc = `${finalDesc}\n\n<!-- custom_attr: ${JSON.stringify(cleanAttr)} -->`.trim();
+    }
+    
     const payload = {
       name: form.name.trim(),
       price: parseFloat(form.price) || 0,
       currency: form.currency,
       quantity: form.qty !== '' ? parseInt(form.qty) : null,
-      description: form.desc.trim() || null
+      description: finalDesc || null
     };
 
     if (editingId) {
       const { error } = await supabase.from('products').update(payload).eq('id', editingId);
-      if (error) setErr(error.message);
-      else { showToast(t('prod_updated')); cancelEdit(); }
+      if (error) toast.error(error.message);
+      else { toast.success(t('prod_updated')); cancelEdit(); }
     } else {
       const { error } = await supabase.from('products').insert({ ...payload, client_id: client.id, is_active: true });
-      if (error) setErr(error.message);
-      else { showToast(t('prod_added')); cancelEdit(); }
+      if (error) toast.error(error.message);
+      else { toast.success(t('prod_added')); cancelEdit(); }
     }
   };
 
   const cancelEdit = () => {
     setEditingId('');
-    setForm({ name: '', price: '', currency: 'IQD', qty: '', desc: '' });
+    setForm({ name: '', price: '', currency: 'IQD', qty: '', desc: '', variants: [], customAttr: [] });
   };
 
   const toggleProduct = async (id: string, newState: boolean) => {
-    await supabase.from('products').update({ is_active: newState }).eq('id', id);
-    showToast(newState ? (lang === 'ar' ? 'المنتج نشط الآن' : 'Product is now active') : (lang === 'ar' ? 'المنتج مخفي' : 'Product is now hidden'));
+    const { error } = await supabase.from('products').update({ is_active: newState }).eq('id', id);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success(newState ? (lang === 'ar' ? 'المنتج نشط الآن' : 'Product is now active') : (lang === 'ar' ? 'المنتج مخفي' : 'Product is now hidden'));
+    }
   };
 
   const deleteProduct = async (id: string) => {
-    await supabase.from('products').delete().eq('id', id);
-    showToast(t('prod_deleted'));
-    setDeleteConfirmId(null);
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success(t('prod_deleted'));
+      setDeleteConfirmId(null);
+    }
+  };
+
+  const handleBulkActivate = async (activate: boolean) => {
+    if (!selectedIds.length) return;
+    const { error } = await supabase.from('products').update({ is_active: activate }).in('id', selectedIds);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success(lang === 'ar' ? 'تم التحديث بنجاح' : 'Bulk update successful');
+      setSelectedIds([]);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedIds.length) return;
+    if (!confirm(lang === 'ar' ? 'هل أنت متأكد من حذف المنتجات المحددة؟' : 'Are you sure you want to delete selected products?')) return;
+    const { error } = await supabase.from('products').delete().in('id', selectedIds);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success(lang === 'ar' ? 'تم الحذف بنجاح' : 'Deleted successfully');
+      setSelectedIds([]);
+    }
+  };
+
+  const handleBulkPriceSubmit = async () => {
+    if (!selectedIds.length) return;
+    const amt = parseFloat(bulkPriceChange.amount);
+    if (isNaN(amt)) return toast.error(lang === 'ar' ? 'أدخل سعرًا صالحًا' : 'Enter a valid price');
+    try {
+      await Promise.all(selectedIds.map(async (id) => {
+        const product = products.find((p: any) => p.id === id);
+        let newPrice = parseFloat(product?.price || '0');
+        if (bulkPriceChange.type === 'fixed') newPrice = amt;
+        else if (bulkPriceChange.type === 'increase') newPrice += amt;
+        else if (bulkPriceChange.type === 'decrease') newPrice = Math.max(0, newPrice - amt);
+        
+        const { error } = await supabase.from('products').update({ price: newPrice.toString() }).eq('id', id);
+        if (error) throw error;
+      }));
+      
+      toast.success(lang === 'ar' ? 'تم تحديث الأسعار' : 'Prices updated');
+      setShowBulkPriceModal(false);
+      setSelectedIds([]);
+    } catch (error: any) {
+      toast.error(error.message);
+    }
   };
 
   const exportData = () => {
@@ -811,6 +1043,18 @@ function ProductsPanel({ t, products, client, lang }: any) {
     }
   });
 
+  const toggleSelectAll = () => {
+    if (selectedIds.length === sortedProducts.length && sortedProducts.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(sortedProducts.map((p: any) => p.id));
+    }
+  };
+
+  const toggleBulkSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
   return (
     <div className="panel active">
       <div className="mb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -849,6 +1093,58 @@ function ProductsPanel({ t, products, client, lang }: any) {
           </select>
         </div>
       </div>
+      
+      {selectedIds.length > 0 && (
+        <div className="mb-4 p-3 bg-[color:var(--surface2)] border border-[color:var(--glass-border)] rounded-xl flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium">
+              {lang === 'ar' ? `${selectedIds.length} منتج محدد` : `${selectedIds.length} products selected`}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => handleBulkActivate(true)} className="btn btn-ghost text-xs py-1.5 px-3">
+              {lang === 'ar' ? 'تنشيط' : 'Activate'}
+            </button>
+            <button onClick={() => handleBulkActivate(false)} className="btn btn-ghost text-xs py-1.5 px-3">
+              {lang === 'ar' ? 'إخفاء' : 'Deactivate'}
+            </button>
+            <button onClick={() => setShowBulkPriceModal(true)} className="btn btn-ghost text-xs py-1.5 px-3">
+              {lang === 'ar' ? 'تغيير السعر' : 'Change Price'}
+            </button>
+            <button onClick={handleBulkDelete} className="btn text-red-500 hover:bg-red-500/10 text-xs py-1.5 px-3 bg-transparent border border-red-500/30">
+              {lang === 'ar' ? 'حذف' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showBulkPriceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="glass w-full max-w-sm p-6 rounded-2xl border border-[color:var(--glass-border)] shadow-xl direction-ltr text-left" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+            <div className="text-lg font-bold mb-4">{lang === 'ar' ? 'تغيير الأسعار المحددة' : 'Change Selected Prices'}</div>
+            
+            <div className="field mb-4">
+              <label>{lang === 'ar' ? 'النوع' : 'Type'}</label>
+              <select className="inp" value={bulkPriceChange.type} onChange={e => setBulkPriceChange({ ...bulkPriceChange, type: e.target.value as any })}>
+                <option value="fixed">{lang === 'ar' ? 'سعر ثابت' : 'Fixed Price'}</option>
+                <option value="increase">{lang === 'ar' ? 'زيادة بالمبلغ' : 'Increase Amount'}</option>
+                <option value="decrease">{lang === 'ar' ? 'تخفيض بالمبلغ' : 'Decrease Amount'}</option>
+              </select>
+            </div>
+
+            <div className="field mb-6">
+              <label>{lang === 'ar' ? 'المبلغ' : 'Amount'}</label>
+              <input type="number" className="inp" value={bulkPriceChange.amount} onChange={e => setBulkPriceChange({ ...bulkPriceChange, amount: e.target.value })} />
+            </div>
+
+            <div className="flex gap-2">
+              <button className="btn btn-neon flex-1" onClick={handleBulkPriceSubmit}>{lang === 'ar' ? 'تطبيق' : 'Apply'}</button>
+              <button className="btn btn-ghost flex-1" onClick={() => setShowBulkPriceModal(false)}>{lang === 'ar' ? 'إلغاء' : 'Cancel'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="products-layout">
         <div className="products-grid">
           {sortedProducts.length === 0 ? (
@@ -857,10 +1153,32 @@ function ProductsPanel({ t, products, client, lang }: any) {
               <div className="text-lg">{searchQuery ? t('prods_empty') : t('prods_empty')}</div>
             </div>
           ) : (
-            sortedProducts.map((p: any) => (
-              <div className="prod-card glass" key={p.id}>
-                <div className="prod-top">
-                  <div className="prod-name">{p.name}</div>
+            <>
+              {sortedProducts.length > 0 && (
+                <div className="col-span-full flex items-center p-2 mb-2 bg-[color:var(--surface)] shrink-0 rounded-lg border border-[color:var(--glass-border)]">
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 cursor-pointer accent-[color:var(--neon)] mx-2"
+                    checked={selectedIds.length === sortedProducts.length && sortedProducts.length > 0}
+                    onChange={toggleSelectAll}
+                  />
+                  <span className="text-sm cursor-pointer select-none" onClick={toggleSelectAll}>
+                    {lang === 'ar' ? 'تحديد الكل' : 'Select All'}
+                  </span>
+                </div>
+              )}
+              {sortedProducts.map((p: any) => (
+                <div className="prod-card glass relative" key={p.id}>
+                  <div className="absolute top-4 left-4 z-10 w-fit">
+                    <input 
+                      type="checkbox"
+                      className="w-5 h-5 cursor-pointer accent-[color:var(--neon)] bg-[color:var(--bg-card)] border-gray-600 rounded"
+                      checked={selectedIds.includes(p.id)}
+                      onChange={() => toggleBulkSelect(p.id)}
+                    />
+                  </div>
+                  <div className="prod-top ml-8 rtl:ml-0 rtl:mr-8">
+                    <div className="prod-name">{p.name}</div>
                   <span className={`prod-status ${p.is_active ? 'active' : 'inactive'}`}>
                     {p.is_active ? (lang === 'ar' ? 'نشط' : 'Active') : (lang === 'ar' ? 'مخفي' : 'Hidden')}
                   </span>
@@ -869,7 +1187,37 @@ function ProductsPanel({ t, products, client, lang }: any) {
                   {formatCurrency(Number(p.price), p.currency)}
                 </div>
                 <div className="prod-qty">📦 {p.quantity != null ? `${p.quantity} ${lang === 'ar' ? 'متاح' : 'available'}` : (lang === 'ar' ? 'غير محدود' : 'unlimited')}</div>
-                <div className="prod-desc">{p.description || '—'}</div>
+                <div className="prod-desc">
+                  {parseProductData(p.description).desc ? (
+                    <div className="markdown-body text-sm space-y-1">
+                      <Markdown>{parseProductData(p.description).desc}</Markdown>
+                    </div>
+                  ) : (
+                    '—'
+                  )}
+                </div>
+                {parseProductData(p.description).variants.length > 0 && (
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {parseProductData(p.description).variants.map((v: any, i: number) => (
+                      <div key={i} className="text-xs bg-[color:var(--surface)] border border-[color:var(--glass-border)] rounded px-2 py-1 flex items-center gap-2">
+                        {v.image && <img src={v.image} alt="variant" className="w-5 h-5 rounded object-cover" />}
+                        <span className="font-medium text-[color:var(--text)]">{v.name}</span>
+                        <span className="text-[color:var(--neon)] font-mono">{formatCurrency(Number(v.price || 0), p.currency)}</span>
+                        {v.qty !== '' && <span className="text-[color:var(--text-muted)] text-[10px]">({v.qty})</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {parseProductData(p.description).customAttr.length > 0 && (
+                  <div className="mb-3 flex flex-wrap gap-2 mt-2">
+                    {parseProductData(p.description).customAttr.map((attr: any, i: number) => (
+                      <div key={i} className="text-xs bg-[color:var(--surface)] border border-[color:var(--glass-border)] rounded px-2 py-1 flex items-center gap-1">
+                        <span className="font-medium text-[color:var(--text-muted)]">{attr.k}:</span>
+                        <span className="text-[color:var(--text)]">{attr.v}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="prod-actions flex flex-wrap">
                   {deleteConfirmId === p.id ? (
                     <div className="flex flex-col gap-2 w-full mt-2 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
@@ -881,7 +1229,11 @@ function ProductsPanel({ t, products, client, lang }: any) {
                     </div>
                   ) : (
                     <>
-                      <button className="btn btn-ghost btn-sm" onClick={() => { setEditingId(p.id); setForm({ name: p.name, price: String(p.price), currency: p.currency, qty: p.quantity != null ? String(p.quantity) : '', desc: p.description || '' }); }}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => { 
+                        setEditingId(p.id); 
+                        const pd = parseProductData(p.description);
+                        setForm({ name: p.name, price: String(p.price), currency: p.currency, qty: p.quantity != null ? String(p.quantity) : '', desc: pd.desc, variants: pd.variants, customAttr: pd.customAttr }); 
+                      }}>
                         {lang === 'ar' ? 'تعديل' : 'Edit'}
                       </button>
                       <button className="btn btn-ghost btn-sm" onClick={() => toggleProduct(p.id, !p.is_active)}>
@@ -892,37 +1244,177 @@ function ProductsPanel({ t, products, client, lang }: any) {
                   )}
                 </div>
               </div>
-            ))
-          )}
+            ))}
+          </>
+        )}
         </div>
 
         <div className="form-panel glass2">
           <div className="form-title">{editingId ? t('edit_prod') : t('add_prod')}</div>
-          {err && <div id="form-err" style={{ display: 'block' }}>{err}</div>}
           <div className="field">
             <label>{t('prod_name_lbl')}</label>
-            <input className="inp" type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Advanced English Course" />
+            <input className={`inp ${errors.name ? 'border-red-500' : ''}`} type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Advanced English Course" />
+            {errors.name && <div className="text-red-500 text-xs mt-1">{errors.name}</div>}
           </div>
           <div className="field">
             <label>{t('prod_price_lbl')}</label>
             <div className="form-row-2">
-              <input className="inp" type="number" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} placeholder="0" min="0" />
+              <input className={`inp ${errors.price ? 'border-red-500' : ''}`} type="number" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} placeholder="0" min="0" />
               <select className="inp" value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })}>
                 <option value="IQD">IQD</option>
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
               </select>
             </div>
+            {errors.price && <div className="text-red-500 text-xs mt-1">{errors.price}</div>}
           </div>
           <div className="field">
             <label>{t('prod_qty_lbl')}</label>
-            <input className="inp" type="number" value={form.qty} onChange={e => setForm({ ...form, qty: e.target.value })} placeholder="0 = unlimited" min="0" />
+            <input className={`inp ${errors.qty ? 'border-red-500' : ''}`} type="number" value={form.qty} onChange={e => setForm({ ...form, qty: e.target.value })} placeholder="0 = unlimited" min="0" />
+            {errors.qty && <div className="text-red-500 text-xs mt-1">{errors.qty}</div>}
           </div>
           <div className="field">
             <label>{t('prod_desc_lbl')}</label>
-            <textarea className="inp" value={form.desc} onChange={e => setForm({ ...form, desc: e.target.value })} placeholder="What's included, etc." />
+            <div className="flex flex-wrap gap-1 mb-2">
+              <button 
+                type="button" 
+                onClick={() => applyFormatting('**', '**')} 
+                className="p-1 px-2 text-sm text-[color:var(--text)] hover:text-[color:var(--text)] rounded border border-[color:var(--glass-border)] hover:border-[color:var(--glass-border-h)] bg-[color:var(--glass-bg)] flex items-center justify-center transition-colors"
+                title="Bold"
+              >
+                <Bold size={16} />
+              </button>
+              <button 
+                type="button" 
+                onClick={() => applyFormatting('*', '*')} 
+                className="p-1 px-2 text-sm text-[color:var(--text)] hover:text-[color:var(--text)] rounded border border-[color:var(--glass-border)] hover:border-[color:var(--glass-border-h)] bg-[color:var(--glass-bg)] flex items-center justify-center transition-colors"
+                title="Italic"
+              >
+                <Italic size={16} />
+              </button>
+              <button 
+                type="button" 
+                onClick={() => applyFormatting('\n# ', '\n')} 
+                className="p-1 px-2 text-sm text-[color:var(--text)] hover:text-[color:var(--text)] rounded border border-[color:var(--glass-border)] hover:border-[color:var(--glass-border-h)] bg-[color:var(--glass-bg)] flex items-center justify-center transition-colors"
+                title="Heading 1"
+              >
+                <Heading1 size={16} />
+              </button>
+              <button 
+                type="button" 
+                onClick={() => applyFormatting('\n## ', '\n')} 
+                className="p-1 px-2 text-sm text-[color:var(--text)] hover:text-[color:var(--text)] rounded border border-[color:var(--glass-border)] hover:border-[color:var(--glass-border-h)] bg-[color:var(--glass-bg)] flex items-center justify-center transition-colors"
+                title="Heading 2"
+              >
+                <Heading2 size={16} />
+              </button>
+              <button 
+                type="button" 
+                onClick={() => applyFormatting('\n> ', '\n')} 
+                className="p-1 px-2 text-sm text-[color:var(--text)] hover:text-[color:var(--text)] rounded border border-[color:var(--glass-border)] hover:border-[color:var(--glass-border-h)] bg-[color:var(--glass-bg)] flex items-center justify-center transition-colors"
+                title="Blockquote"
+              >
+                <Quote size={16} />
+              </button>
+              <button 
+                type="button" 
+                onClick={() => applyFormatting('\n- ', '\n')} 
+                className="p-1 px-2 text-sm text-[color:var(--text)] hover:text-[color:var(--text)] rounded border border-[color:var(--glass-border)] hover:border-[color:var(--glass-border-h)] bg-[color:var(--glass-bg)] flex items-center justify-center transition-colors"
+                title="List"
+              >
+                <List size={16} />
+              </button>
+              <button 
+                type="button" 
+                onClick={() => applyFormatting('\n```\n', '\n```\n')} 
+                className="p-1 px-2 text-sm text-[color:var(--text)] hover:text-[color:var(--text)] rounded border border-[color:var(--glass-border)] hover:border-[color:var(--glass-border-h)] bg-[color:var(--glass-bg)] flex items-center justify-center transition-colors"
+                title="Code Block"
+              >
+                <Code size={16} />
+              </button>
+            </div>
+            <textarea ref={descRef} className="inp" value={form.desc} onChange={e => setForm({ ...form, desc: e.target.value })} placeholder="What's included, etc." />
           </div>
-          <div className="flex gap-2 mt-2">
+
+          <div className="field mt-4 border-t border-[color:var(--glass-border)] pt-4">
+            <label className="flex justify-between items-center mb-2">
+              <span>{lang === 'ar' ? 'الأنواع (Variants)' : 'Variants'}</span>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setForm({...form, variants: [...form.variants, { name: '', price: form.price, qty: '', image: '' }]})}>
+                + {lang === 'ar' ? 'إضافة نوع' : 'Add'}
+              </button>
+            </label>
+            {form.variants.length > 0 && (
+              <div className="overflow-x-auto border border-[color:var(--glass-border)] rounded-md mb-2 bg-[color:var(--surface)]">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-[color:var(--glass-border)] bg-[color:var(--bg)] text-[color:var(--text-muted)] text-xs">
+                    <tr>
+                      <th className="p-2 font-medium w-12 text-center">#</th>
+                      <th className="p-2 font-medium">{lang === 'ar' ? 'الاسم' : 'Name'}</th>
+                      <th className="p-2 font-medium">{lang === 'ar' ? 'السعر' : 'Price'}</th>
+                      <th className="p-2 font-medium">{lang === 'ar' ? 'الكمية' : 'Qty'}</th>
+                      <th className="p-2 font-medium">{lang === 'ar' ? 'صورة' : 'Image'}</th>
+                      <th className="p-2 font-medium w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {form.variants.map((v, i) => {
+                      const verr = errors.variants && errors.variants[i] ? errors.variants[i] : {};
+                      return (
+                        <tr key={i} className="border-b border-[color:var(--glass-border)] last:border-0 hover:bg-[color:var(--bg-hover)] items-start">
+                          <td className="p-2 align-top text-[color:var(--text-muted)] text-xs pt-4 text-center">{i + 1}</td>
+                          <td className="p-2 align-top min-w-[120px]">
+                            <input className={`inp text-sm p-2 w-full ${verr.name ? 'border-red-500' : ''}`} placeholder={lang === 'ar' ? 'اسم النوع' : 'Variant name'} value={v.name} onChange={e => { const nv = [...form.variants]; nv[i].name = e.target.value; setForm({...form, variants: nv}); }} />
+                            {verr.name && <div className="text-red-500 text-[10px] mt-1">{verr.name}</div>}
+                          </td>
+                          <td className="p-2 align-top w-28">
+                            <input className={`inp text-sm p-2 w-full ${verr.price ? 'border-red-500' : ''}`} type="number" placeholder="0" value={v.price} onChange={e => { const nv = [...form.variants]; nv[i].price = e.target.value; setForm({...form, variants: nv}); }} />
+                            {verr.price && <div className="text-red-500 text-[10px] mt-1">{verr.price}</div>}
+                          </td>
+                          <td className="p-2 align-top w-24">
+                            <input className={`inp text-sm p-2 w-full ${verr.qty ? 'border-red-500' : ''}`} type="number" placeholder="∞" value={v.qty} onChange={e => { const nv = [...form.variants]; nv[i].qty = e.target.value; setForm({...form, variants: nv}); }} />
+                            {verr.qty && <div className="text-red-500 text-[10px] mt-1">{verr.qty}</div>}
+                          </td>
+                          <td className="p-2 align-top min-w-[120px]">
+                            <div className="flex items-center gap-2">
+                              {v.image && (
+                                <img src={v.image} alt="" className="w-8 h-8 rounded object-cover border border-[color:var(--glass-border)] flex-shrink-0" />
+                              )}
+                              <input className="inp text-sm p-2 w-full" placeholder={lang === 'ar' ? 'رابط' : 'URL'} value={v.image || ''} onChange={e => { const nv = [...form.variants]; nv[i].image = e.target.value; setForm({...form, variants: nv}); }} />
+                            </div>
+                          </td>
+                          <td className="p-2 align-top pt-3">
+                            <button type="button" className="text-red-400 hover:text-red-300 p-1" onClick={() => setForm({...form, variants: form.variants.filter((_, idx) => idx !== i)})}>
+                              <X size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="field mt-4 border-t border-[color:var(--glass-border)] pt-4">
+            <label className="flex justify-between items-center mb-2">
+              <span>{lang === 'ar' ? 'أعمدة إضافية' : 'Custom Attributes'}</span>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setForm({...form, customAttr: [...form.customAttr, { k: '', v: '' }]})}>
+                + {lang === 'ar' ? 'إضافة' : 'Add'}
+              </button>
+            </label>
+            {form.customAttr.map((attr, i) => (
+              <div key={i} className="flex gap-2 mb-2 items-center">
+                <input className="inp text-sm w-1/3" placeholder={lang === 'ar' ? 'الاسم (العمود)' : 'Key (Column)'} value={attr.k} onChange={e => { const nca = [...form.customAttr]; nca[i].k = e.target.value; setForm({...form, customAttr: nca}); }} />
+                <input className="inp text-sm flex-1" placeholder={lang === 'ar' ? 'القيمة' : 'Value'} value={attr.v} onChange={e => { const nca = [...form.customAttr]; nca[i].v = e.target.value; setForm({...form, customAttr: nca}); }} />
+                <button type="button" className="text-red-400 hover:text-red-300 ml-1" onClick={() => setForm({...form, customAttr: form.customAttr.filter((_, idx) => idx !== i)})}>
+                  <X size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2 mt-2 border-t border-[color:var(--glass-border)] pt-4">
             <button className="btn btn-neon flex-1" onClick={submitProduct}>{editingId ? t('update_prod') : t('save_prod')}</button>
             {editingId && <button className="btn btn-ghost" onClick={cancelEdit}>{t('cancel')}</button>}
           </div>
@@ -1003,13 +1495,95 @@ function CalculatorPanel({ t }: any) {
   );
 }
 
-// Global utility for Toast
-let toastT: NodeJS.Timeout;
-export function showToast(msg: string, type: 'ok' | 'err' = 'ok') {
-  const t = document.getElementById('toast');
-  if (!t) return;
-  t.textContent = (type === 'ok' ? '✓ ' : '✕ ') + msg;
-  t.className = `toast ${type} show`;
-  clearTimeout(toastT);
-  toastT = setTimeout(() => t.classList.remove('show'), 3000);
+// --- Orders Panel ---
+function OrdersPanel({ t, client, lang }: any) {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!client) return;
+    const loadOrders = async () => {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('instagram_id', client.instagram_page_id)
+        .order('created_at', { ascending: false });
+      
+      if (error) toast.error(error.message);
+      else setOrders(data || []);
+      setLoading(false);
+    };
+    loadOrders();
+  }, [client]);
+
+  const updateStatus = async (id: string, currentStatus: string) => {
+    const nextStatus = currentStatus === 'paid' ? 'pending' : (currentStatus === 'pending' ? 'cancelled' : 'paid');
+    const { error } = await supabase.from('leads').update({ payment_status: nextStatus }).eq('id', id);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      setOrders(orders.map(o => o.id === id ? { ...o, payment_status: nextStatus } : o));
+      toast.success(t('update_status'));
+    }
+  };
+
+  const df = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-IQ' : 'en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <div className="panel active">
+      <div className="mb-5 flex items-center justify-between">
+        <div>
+          <div className="page-title">{t('orders_title')}</div>
+          <div className="page-sub">{t('orders_sub')}</div>
+        </div>
+      </div>
+      <div className="glass2 p-6">
+        {loading ? (
+          <div className="text-center py-10 text-[color:var(--text-muted)]">{t('loading')}</div>
+        ) : orders.length === 0 ? (
+          <div className="empty-state flex flex-col items-center justify-center py-20 text-[color:var(--text-muted)] gap-4">
+            <Inbox className="w-16 h-16 opacity-10" />
+            <div className="text-lg">{t('orders_empty')}</div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[700px] text-[color:var(--text)]">
+              <thead>
+                <tr className="border-b border-[color:var(--glass-border)] text-[color:var(--text-muted)] text-sm label-rtl">
+                  <th className="pb-3 pr-4 font-semibold text-start">{lang === 'ar' ? 'معرف الطلب' : 'Order ID'}</th>
+                  <th className="pb-3 px-4 font-semibold text-start">{lang === 'ar' ? 'التاريخ' : 'Date'}</th>
+                  <th className="pb-3 px-4 font-semibold text-start">{lang === 'ar' ? 'المبلغ' : 'Amount'}</th>
+                  <th className="pb-3 px-4 font-semibold text-start">{lang === 'ar' ? 'الحالة' : 'Status'}</th>
+                  <th className="pb-3 pl-4 font-semibold text-end">{lang === 'ar' ? 'الإجراء' : 'Action'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((o: any) => (
+                  <tr key={o.id} className="border-b border-[color:var(--glass-border)] last:border-0 hover:bg-[color:var(--bg-hover)] transition-colors label-rtl">
+                    <td className="py-4 pr-4 text-xs font-mono text-[color:var(--text-dim)] text-start">{o.id?.slice(0,8)}</td>
+                    <td className="py-4 px-4 text-sm whitespace-nowrap text-start">{df.format(new Date(o.created_at))}</td>
+                    <td className="py-4 px-4 text-sm font-medium text-start">{formatCurrency(o.amount || 0, o.currency || 'IQD')}</td>
+                    <td className="py-4 px-4 text-start">
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                        o.payment_status === 'paid' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 
+                        o.payment_status === 'pending' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' : 
+                        'bg-red-500/20 text-red-400 border border-red-500/30'
+                      }`}>
+                        {o.payment_status === 'paid' ? t('status_paid') : o.payment_status === 'pending' ? t('status_pending') : t('status_cancelled')}
+                      </span>
+                    </td>
+                    <td className="py-4 pl-4 text-end">
+                      <button className="btn btn-ghost btn-sm text-xs" onClick={() => updateStatus(o.id, o.payment_status)}>
+                        {t('update_status')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
